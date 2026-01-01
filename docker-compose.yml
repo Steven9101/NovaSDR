@@ -1,0 +1,84 @@
+services:
+  novasdr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: novasdr-server
+    restart: unless-stopped
+
+    # Port mappings
+    ports:
+      - "9002:9002"  # Web UI and WebSocket port
+    
+    # Volume mappings for persistence and configuration
+    volumes:
+      # Configuration files (customize as needed)
+      - ./config:/app/config
+      # Logs persistence
+      - ./logs:/app/logs
+      # Data persistence
+      - ./data:/app/data
+    
+    # Device access for SDR hardware
+    # Uncomment and modify based on your SDR device
+    devices:
+      # RTL-SDR devices
+      - /dev/bus/usb:/dev/bus/usb
+      # Alternative: specific device mapping
+      # - /dev/bus/usb/001/002:/dev/bus/usb/001/002
+    
+    # Privileged mode may be needed for USB device access
+    # Only use if necessary for your setup
+    privileged: false
+    
+    # Environment variables
+    environment:
+      - RUST_LOG=info
+      - RUST_BACKTRACE=1
+      # OpenCL platform/device selection (optional)
+      # - NOVASDR_OPENCL_PLATFORM=0
+      # - NOVASDR_OPENCL_DEVICE=0
+      # Vulkan device selection (optional, if built with vkfft)
+      # - NOVASDR_VULKAN_DEVICE=0
+    
+    # Network mode (use host mode if having issues with device detection)
+    # network_mode: host
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9002"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Resource limits (adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    
+  # Optional: ws_probe utility for debugging WebSocket connections
+  # Uncomment if you need to debug WebSocket issues
+  # ws_probe:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: novasdr-ws-probe
+  #   entrypoint: ["/app/ws_probe"]
+  #   command: ["ws://novasdr:9002/ws"]
+  #   depends_on:
+  #     - novasdr
+  #   network_mode: service:novasdr
+
+# Optional: Networks configuration
+networks:
+  default:
+    driver: bridge
+
+# Optional: Volumes configuration for named volumes
+# volumes:
+#   novasdr_data:
+#   novasdr_logs:
