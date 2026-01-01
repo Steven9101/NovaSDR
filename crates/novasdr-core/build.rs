@@ -13,9 +13,36 @@ fn main() {
     let manifest_dir = std::path::PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
 
     fn vkfft_layout_ok(include_dir: &std::path::Path) -> bool {
-        include_dir.join("vkFFT.h").is_file()
-            && include_dir
+        let header = include_dir.join("vkFFT.h");
+        if !header.is_file() {
+            return false;
+        }
+
+        // VkFFT is header-only but `vkFFT.h` includes additional headers. Different distro packages
+        // have historically shipped slightly different include layouts. We validate the layout
+        // based on what `vkFFT.h` itself references.
+        let header_text = std::fs::read_to_string(&header).unwrap_or_default();
+        if header_text.contains("vkFFT/vkFFT_Structs/vkFFT_Structs.h") {
+            return include_dir
                 .join("vkFFT")
+                .join("vkFFT_Structs")
+                .join("vkFFT_Structs.h")
+                .is_file();
+        }
+        if header_text.contains("vkFFT_Structs/vkFFT_Structs.h") {
+            return include_dir
+                .join("vkFFT_Structs")
+                .join("vkFFT_Structs.h")
+                .is_file();
+        }
+
+        // Fallback: accept either known layout.
+        include_dir
+            .join("vkFFT")
+            .join("vkFFT_Structs")
+            .join("vkFFT_Structs.h")
+            .is_file()
+            || include_dir
                 .join("vkFFT_Structs")
                 .join("vkFFT_Structs.h")
                 .is_file()
@@ -51,11 +78,13 @@ fn main() {
 
     let vkfft_include_dir = find_vkfft_include_dir();
     let Some(vkfft_include_dir) = vkfft_include_dir else {
-        println!("cargo:warning=vkFFT.h not found.");
+        println!("cargo:warning=VkFFT headers not found (vkFFT.h + required include layout).");
         println!(
             "cargo:warning=Install a system package (e.g. Debian/RPi: `apt-get install -y libvkfft-dev`)."
         );
-        println!("cargo:warning=You can also set VKFFT_INCLUDE_DIR to the directory containing vkFFT.h and the vkFFT/ subdirectory.");
+        println!(
+            "cargo:warning=You can also set VKFFT_INCLUDE_DIR to the directory containing vkFFT.h."
+        );
         panic!("vkfft requires VkFFT headers (vkFFT.h)");
     };
 

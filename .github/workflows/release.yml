@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             package_ext: tar.gz
           - os: windows-latest
@@ -48,11 +48,7 @@ jobs:
             exit 1
           fi
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: "frontend/package-lock.json"
+      # The frontend is a git submodule and ships with prebuilt artifacts in frontend/dist/.
 
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
@@ -86,12 +82,12 @@ jobs:
           set -euo pipefail
           brew update
           brew install pkg-config soapysdr
-      - name: Build frontend
+
+      - name: Verify frontend/dist exists
         shell: bash
         run: |
-          cd frontend
-          npm ci
-          npm run build
+          set -euo pipefail
+          test -f frontend/dist/index.html
 
       - name: Build backend
         shell: bash
@@ -107,20 +103,6 @@ jobs:
           features="soapysdr"
           if [[ "${{ runner.os }}" == "Linux" ]]; then
             features="soapysdr,clfft"
-
-            # Best-effort: include vkfft support when system packages are available on the runner.
-            # (Some Ubuntu images do not ship libvkfft-dev; in that case we ship without vkfft.)
-            if sudo apt-get install -y --no-install-recommends \
-              libvkfft-dev \
-              libvulkan-dev \
-              glslang-dev \
-              spirv-tools \
-              g++ \
-              >/dev/null 2>&1; then
-              if [[ -f /usr/include/vkfft/vkFFT.h || -f /usr/include/vkFFT/vkFFT.h || -f /usr/include/VkFFT/vkFFT.h || -f /usr/include/vkFFT.h ]]; then
-                features="${features},vkfft"
-              fi
-            fi
           fi
 
           NOVASDR_BUILD="${TAG}-${{ matrix.target }}" \
@@ -204,17 +186,12 @@ jobs:
                 curl \
                 g++ \
                 git \
-                npm \
                 clang \
                 llvm-dev \
                 libclang-dev \
                 pkg-config \
                 libsoapysdr-dev \
-                soapysdr-tools \
-                libvkfft-dev \
-                libvulkan-dev \
-                glslang-dev \
-                spirv-tools
+                soapysdr-tools
 
               # Optional on ARM64 (depends on distro packaging).
               apt-get install -y --no-install-recommends \
@@ -230,13 +207,9 @@ jobs:
                 export LIBCLANG_PATH="$(llvm-config --libdir)"
               fi
 
-              cd /workspace/frontend
-              npm ci
-              npm run build
-
               cd /workspace
 
-              features="soapysdr,vkfft"
+              features="soapysdr"
               if ldconfig -p 2>/dev/null | grep -qi clfft; then
                 features="${features},clfft"
               fi

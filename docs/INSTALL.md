@@ -12,7 +12,7 @@ OpenCL (clFFT) is part of the recommended build. NovaSDR uses OpenCL only when b
 When building with `--features clfft`, you also need the `clFFT` library installed (the installer attempts to install it via your package manager; see `NOVA_CLFFT`).
 
 VkFFT (Vulkan) is an optional Linux-only accelerator. NovaSDR uses it only when built with the `vkfft` feature and when a Vulkan-capable driver/stack is available.
-When building with `--features vkfft`, you also need `glslang` headers and SPIRV-Tools (the installer can attempt to install them; see `NOVA_VKFFT`).
+When building with `--features vkfft`, you also need VkFFT + `glslang` headers and SPIRV-Tools (the installer can attempt to install them; see `NOVA_VKFFT`).
 
 ## One-line installer (Linux/macOS)
 
@@ -30,7 +30,7 @@ The installer:
 - builds and installs NovaSDR from source
 - does not build the frontend unless requested (`NOVA_FRONTEND=build`)
 
-To enable VkFFT builds, set `NOVA_VKFFT=install` and answer **yes** when prompted for `--features vkfft`.
+To enable VkFFT builds, answer **yes** when prompted for `--features vkfft`. By default, the installer will attempt to install the required Vulkan/glslang/VkFFT packages when you opt in (override with `NOVA_VKFFT=skip`).
 
 Example (Raspberry Pi 4 / Debian/Raspberry Pi OS):
 
@@ -133,6 +133,8 @@ curl -fsSL https://novasdr.com/install.sh | NOVA_DEVICE=all sh
 ```sh
 curl -fsSL https://novasdr.com/install.sh | NOVA_SDRPLAY_API=install sh
 ```
+
+Note: the SDRplay `.run` installer is interactive and reads from stdin. The NovaSDR installer will attach it to `/dev/tty` so it remains interactive even when invoked via `curl ... | sh`.
 
 ### Source mode from a local checkout (repo not published yet)
 
