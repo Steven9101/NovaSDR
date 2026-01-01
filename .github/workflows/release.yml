@@ -194,8 +194,7 @@ jobs:
                 llvm-dev \
                 libclang-dev \
                 make \
-                pkg-config \
-                patchelf
+                pkg-config
 
               # Optional on ARM64 (depends on distro packaging).
               apt-get install -y --no-install-recommends \
@@ -203,9 +202,7 @@ jobs:
                 libclfft-dev \
               || true
 
-              # Build SoapySDR from source and bundle it with the release artifact so the binary
-              # does not depend on the distro-provided SoapySDR runtime (which can be missing or
-              # incompatible on Raspberry Pi images).
+              # Build SoapySDR from source for build-time linking (we do not ship/bundle it).
               git clone --depth 1 https://github.com/pothosware/SoapySDR.git /tmp/SoapySDR
               cmake -S /tmp/SoapySDR -B /tmp/SoapySDR/build \
                 -DCMAKE_BUILD_TYPE=Release \
@@ -239,20 +236,7 @@ jobs:
               cp LICENSE NOTICE README.md "dist/${PKG}/"
               cp -R config/* "dist/${PKG}/config/" || true
               cp -R frontend/dist "dist/${PKG}/frontend/"
-
-              # Bundle SoapySDR shared library and force the binary to use it via a wrapper script.
-              mkdir -p "dist/${PKG}/lib"
-              cp -a /usr/local/lib/libSoapySDR.so* "dist/${PKG}/lib/"
-
-              cp "target/release/novasdr-server" "dist/${PKG}/novasdr-server.bin"
-              cat > "dist/${PKG}/novasdr-server" <<EOF
-#!/usr/bin/env sh
-set -eu
-DIR="\$(CDPATH= cd -- "\$(dirname -- "\$0")" && pwd)"
-export LD_LIBRARY_PATH="\$DIR/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
-exec "\$DIR/novasdr-server.bin" "\$@"
-EOF
-              chmod +x "dist/${PKG}/novasdr-server" "dist/${PKG}/novasdr-server.bin"
+              cp "target/release/novasdr-server" "dist/${PKG}/"
 
               (cd dist && tar -czf "${PKG}.tar.gz" "${PKG}")
             '
