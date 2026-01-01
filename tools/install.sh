@@ -31,7 +31,7 @@ SoapySDR (always from source):
   NOVA_RTLSDR_V4=1                         (print RTL-SDR v4 driver rebuild steps for apt systems)
 
 Frontend:
-  NOVA_FRONTEND=build|skip                 (default: skip)
+  NOVA_FRONTEND=fetch|build|skip           (default: fetch on Linux, skip otherwise)
 
 OpenCL:
   NOVA_OPENCL=install|skip                 (default: install)
@@ -648,8 +648,7 @@ install_rustup() {
 npm_install_and_build_frontend() {
   headline "Frontend build"
 
-  if [ "${NOVA_FRONTEND:-skip}" != "build" ]; then
-    info "Skipping frontend build (NOVA_FRONTEND=skip)."
+  if [ "${NOVA_FRONTEND:-}" != "build" ]; then
     return 0
   fi
 
@@ -676,6 +675,68 @@ npm_install_and_build_frontend() {
   warn "frontend/package-lock.json not found; falling back to 'npm install' (non-reproducible)."
   warn "Commit a package-lock.json to enable deterministic installs via 'npm ci'."
   (cd frontend && run npm install --no-audit --no-fund && run npm run build)
+}
+
+github_latest_release_tag() {
+  repo="$1"
+  need_cmd curl
+  # Minimal JSON parsing without jq; relies on GitHub's stable response shape.
+  curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" \
+    | tr -d '\r' \
+    | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+    | head -n 1
+}
+
+fetch_frontend_dist_into_install_dir() {
+  repo="$1"
+  tag="$2"
+  install_dir="$3"
+
+  if [ "$os" != "linux" ]; then
+    err "frontend fetch is supported only on Linux."
+    exit 1
+  fi
+
+  target=""
+  case "$arch_norm" in
+    x86_64) target="x86_64-unknown-linux-gnu" ;;
+    aarch64) target="aarch64-unknown-linux-gnu" ;;
+    *)
+      err "frontend fetch: unsupported architecture for release assets: $arch_norm"
+      exit 1
+      ;;
+  esac
+
+  if [ -z "$tag" ]; then
+    tag="$(github_latest_release_tag "$repo")"
+  fi
+  if [ -z "$tag" ]; then
+    err "Could not determine latest release tag for ${repo}."
+    err "Set NOVA_REF to a tag (e.g. v0.1.4) or set NOVA_FRONTEND=skip."
+    exit 1
+  fi
+
+  mk_tmpdir
+  asset="novasdr-${tag}-${target}.tar.gz"
+  url="https://github.com/${repo}/releases/download/${tag}/${asset}"
+
+  headline "Frontend install (prebuilt)"
+  info "Fetching UI from release: ${repo} ${tag} (${target})"
+  step "Download release asset" run curl -fL -o "$tmpdir/$asset" "$url"
+
+  run mkdir -p "$tmpdir/extract"
+  step "Extract release asset" run tar -C "$tmpdir/extract" -xzf "$tmpdir/$asset"
+
+  pkg_dir="$tmpdir/extract/novasdr-${tag}-${target}"
+  if [ ! -d "$pkg_dir/frontend/dist" ]; then
+    err "Release asset did not contain frontend/dist: $pkg_dir/frontend/dist"
+    err "This indicates a broken release build. Try a newer tag."
+    exit 1
+  fi
+
+  run mkdir -p "$install_dir/frontend"
+  run rm -rf "$install_dir/frontend/dist"
+  step "Install frontend/dist" run cp -R "$pkg_dir/frontend/dist" "$install_dir/frontend/"
 }
 
 tmpdir=""
@@ -1065,13 +1126,6 @@ build_from_source() {
     (cd "$src_dir" && run cargo build -p novasdr-server --release)
   fi
 
-  if [ "${NOVA_FRONTEND:-skip}" = "build" ]; then
-    if prompt_yes_no "Install Node.js + npm (needed for frontend build)?" "yes"; then
-      install_packages_node
-    fi
-    (cd "$src_dir" && npm_install_and_build_frontend)
-  fi
-
   install_dir="${NOVA_INSTALL_DIR:-$NOVA_INSTALL_DIR_DEFAULT}"
   bin_dir="${NOVA_BIN_DIR:-$NOVA_BIN_DIR_DEFAULT}"
 
@@ -1079,11 +1133,49 @@ build_from_source() {
   run $SUDO cp "$src_dir/target/release/novasdr-server" "$install_dir/novasdr-server"
   run $SUDO chmod +x "$install_dir/novasdr-server"
 
-  if [ -d "$src_dir/frontend/dist" ]; then
-    run $SUDO mkdir -p "$install_dir/frontend"
-    run $SUDO rm -rf "$install_dir/frontend/dist"
-    run $SUDO cp -R "$src_dir/frontend/dist" "$install_dir/frontend/"
+  frontend_mode="${NOVA_FRONTEND:-}"
+  if [ -z "$frontend_mode" ]; then
+    if [ "$os" = "linux" ]; then
+      frontend_mode="fetch"
+    else
+      frontend_mode="skip"
+    fi
   fi
+
+  case "$frontend_mode" in
+    skip)
+      info "Skipping frontend install (NOVA_FRONTEND=skip)."
+      ;;
+    build)
+      if prompt_yes_no "Install Node.js + npm (needed for frontend build)?" "yes"; then
+        install_packages_node
+      fi
+      (cd "$src_dir" && npm_install_and_build_frontend)
+      if [ -d "$src_dir/frontend/dist" ]; then
+        run $SUDO mkdir -p "$install_dir/frontend"
+        run $SUDO rm -rf "$install_dir/frontend/dist"
+        run $SUDO cp -R "$src_dir/frontend/dist" "$install_dir/frontend/"
+      else
+        err "Frontend build finished but frontend/dist was not produced."
+        err "Set NOVA_FRONTEND=fetch to install a prebuilt UI, or fix your Node.js toolchain and rebuild."
+        exit 1
+      fi
+      ;;
+    fetch)
+      frontend_tag=""
+      if [ -n "${NOVA_REF:-}" ]; then
+        case "$NOVA_REF" in
+          v*) frontend_tag="$NOVA_REF" ;;
+          *) frontend_tag="" ;;
+        esac
+      fi
+      fetch_frontend_dist_into_install_dir "$repo" "$frontend_tag" "$install_dir"
+      ;;
+    *)
+      err "Invalid NOVA_FRONTEND: $frontend_mode (expected fetch|build|skip)"
+      exit 1
+      ;;
+  esac
 
   run $SUDO mkdir -p "$bin_dir"
   run $SUDO ln -sf "$install_dir/novasdr-server" "$bin_dir/novasdr-server"

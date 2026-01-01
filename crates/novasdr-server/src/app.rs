@@ -5,7 +5,7 @@ use std::{net::SocketAddr, sync::Arc};
 use tower_http::{compression::CompressionLayer, services::ServeDir};
 
 pub fn router(state: Arc<state::AppState>) -> Router {
-    let html_root = state.cfg.server.html_root.clone();
+    let html_root = state.html_root.clone();
 
     Router::new()
         .route("/server-info.json", get(state::server_info))

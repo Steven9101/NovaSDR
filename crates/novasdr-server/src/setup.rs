@@ -859,6 +859,54 @@ fn edit_receiver(receiver: &mut Value) -> anyhow::Result<()> {
     )?;
     input.insert("waterfall_size".to_string(), json!(waterfall_size));
 
+    {
+        let current = input
+            .get("accelerator")
+            .and_then(Value::as_str)
+            .unwrap_or("none");
+
+        let mut labels = Vec::<String>::new();
+        labels.push("none".to_string());
+
+        if cfg!(feature = "clfft") {
+            labels.push("clfft".to_string());
+        } else {
+            labels.push("clfft (requires --features clfft)".to_string());
+        }
+
+        if cfg!(feature = "vkfft") {
+            labels.push("vkfft".to_string());
+        } else {
+            labels.push("vkfft (requires --features vkfft)".to_string());
+        }
+
+        let default_idx = labels.iter().position(|s| s == current).unwrap_or(0);
+
+        let selected = Select::new("DSP accelerator (accelerator)", labels)
+            .with_starting_cursor(default_idx)
+            .prompt()
+            .context("prompt accelerator")?;
+
+        let value = if selected.starts_with("clfft") {
+            if !cfg!(feature = "clfft") {
+                ui::line(
+                    "Note: this binary was built without the \"clfft\" feature. Selecting clfft will require rebuilding novasdr-server with --features clfft.",
+                );
+            }
+            "clfft"
+        } else if selected.starts_with("vkfft") {
+            if !cfg!(feature = "vkfft") {
+                ui::line(
+                    "Note: this binary was built without the \"vkfft\" feature. Selecting vkfft will require rebuilding novasdr-server with --features vkfft.",
+                );
+            }
+            "vkfft"
+        } else {
+            "none"
+        };
+        input.insert("accelerator".to_string(), json!(value));
+    }
+
     let defaults = input
         .entry("defaults")
         .or_insert_with(|| json!({}))

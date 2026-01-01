@@ -53,6 +53,7 @@ impl ReceiverState {
 
 pub struct AppState {
     pub cfg: Arc<config::Config>,
+    pub html_root: std::path::PathBuf,
     pub receivers: HashMap<String, Arc<ReceiverState>>,
     pub active_receiver: Arc<ReceiverState>,
     pub markers: Arc<RwLock<serde_json::Value>>,
@@ -74,7 +75,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(cfg: Arc<config::Config>) -> anyhow::Result<Self> {
+    pub fn new(cfg: Arc<config::Config>, html_root: std::path::PathBuf) -> anyhow::Result<Self> {
         let mut receivers = HashMap::new();
         for r in cfg.receivers.iter() {
             let rt = Arc::new(
@@ -91,6 +92,7 @@ impl AppState {
 
         Ok(Self {
             cfg,
+            html_root,
             receivers,
             active_receiver,
             markers: Arc::new(RwLock::new(serde_json::Value::Null)),

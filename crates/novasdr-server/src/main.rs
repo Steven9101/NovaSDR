@@ -38,6 +38,30 @@ fn run_setup(args: &cli::Args, mode: setup::RunMode) -> anyhow::Result<()> {
         .block_on(setup::run(args, mode))
 }
 
+fn resolve_html_root(configured: &str) -> std::path::PathBuf {
+    use std::path::PathBuf;
+    let configured_path = PathBuf::from(configured);
+    if configured_path.is_absolute() {
+        return configured_path;
+    }
+    if configured_path.exists() {
+        return configured_path;
+    }
+
+    let Ok(exe) = std::env::current_exe() else {
+        return configured_path;
+    };
+    let Some(exe_dir) = exe.parent() else {
+        return configured_path;
+    };
+    let candidate = exe_dir.join(&configured_path);
+    if candidate.exists() {
+        return candidate;
+    }
+
+    configured_path
+}
+
 fn main() -> anyhow::Result<()> {
     use clap::parser::ValueSource;
     use clap::{CommandFactory, FromArgMatches};
@@ -147,6 +171,7 @@ fn main() -> anyhow::Result<()> {
             return Err(e).context("load config");
         }
     };
+    let resolved_html_root = resolve_html_root(cfg.server.html_root.as_str());
     tracing::info!(
         config = %config_path.display(),
         receivers = %receivers_path.display(),
@@ -155,6 +180,7 @@ fn main() -> anyhow::Result<()> {
         host = %cfg.server.host,
         port = cfg.server.port,
         html_root = %cfg.server.html_root,
+        html_root_resolved = %resolved_html_root.display(),
         "config loaded"
     );
     for r in cfg.receivers.iter() {
@@ -247,7 +273,9 @@ fn main() -> anyhow::Result<()> {
         .build()
         .context("build tokio runtime")?
         .block_on(async move {
-            let state = Arc::new(state::AppState::new(cfg.clone()).context("init app state")?);
+            let state = Arc::new(
+                state::AppState::new(cfg.clone(), resolved_html_root).context("init app state")?,
+            );
             let active = state.active_receiver_state();
             tracing::info!(
                 receiver_id = %cfg.active_receiver_id,
