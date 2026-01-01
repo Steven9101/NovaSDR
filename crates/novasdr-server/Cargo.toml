@@ -1,0 +1,38 @@
+[package]
+name = "novasdr-server"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+
+[dependencies]
+anyhow = "1.0.95"
+axum = { version = "0.7.9", features = ["ws", "json", "macros"] }
+bytemuck = "1.21.0"
+bytes = "1.9.0"
+clap = { version = "4.5.23", features = ["derive"] }
+chrono = { version = "0.4.39", default-features = false, features = ["clock", "std"] }
+dashmap = "6.1.0"
+futures = "0.3.31"
+inquire = "0.7.5"
+novasdr-core = { path = "../novasdr-core" }
+num-complex = "0.4.6"
+rand = "0.8.5"
+regex = "1.11.1"
+reqwest = { version = "0.12.12", default-features = false, features = ["json", "rustls-tls"] }
+realfft = "3.4.0"
+rustfft = "6.4.1"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_cbor = "0.11.2"
+serde_json = "1.0.134"
+soapysdr = { version = "0.4.4", optional = true }
+tokio = { version = "1.42.0", features = ["macros", "rt-multi-thread", "signal", "sync", "time", "fs", "io-std", "io-util", "process"] }
+tower = "0.5.2"
+tower-http = { version = "0.6.2", features = ["fs", "compression-gzip"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+tracing-appender = "0.2.3"
+
+[features]
+clfft = ["novasdr-core/clfft"]
+soapysdr = ["dep:soapysdr"]
+vkfft = ["novasdr-core/vkfft"]

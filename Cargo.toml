@@ -1,0 +1,10 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/novasdr-core",
+  "crates/novasdr-server",
+  "crates/ws_probe",
+]
+
+[workspace.package]
+license = "GPL-3.0-only"

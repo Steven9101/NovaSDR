@@ -1,0 +1,26 @@
+{
+  "server": {
+    "port": 9002,
+    "host": "0.0.0.0",
+    "html_root": "frontend/dist/",
+    "otherusers": 1,
+    "threads": 0
+  },
+  "websdr": {
+    "register_online": false,
+    "name": "NovaSDR",
+    "antenna": "",
+    "grid_locator": "-",
+    "hostname": "",
+    "operator": "",
+    "email": "",
+    "callsign_lookup_url": "https://www.qrz.com/db/",
+    "chat_enabled": true
+  },
+  "limits": {
+    "audio": 100,
+    "waterfall": 200,
+    "events": 200,
+    "ws_per_ip": 50
+  }
+}

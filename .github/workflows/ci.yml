@@ -1,0 +1,68 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "crates/**"
+      - ".github/workflows/ci.yml"
+      - "rustfmt.toml"
+      - "clippy.toml"
+  workflow_dispatch: {}
+
+jobs:
+  rust:
+    name: rust (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+          token: ${{ secrets.NOVA_SUBMODULES_TOKEN || github.token }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config \
+            libsoapysdr-dev \
+            soapysdr-tools \
+            clang \
+            libclang-dev \
+            ocl-icd-opencl-dev \
+            libclfft-dev \
+          || true
+
+          # Some distros/images may not ship libclfft-dev. Fall back to building from source so the
+          # clfft feature compile check stays meaningful.
+          if ! ldconfig -p 2>/dev/null | grep -qi clfft; then
+            sudo apt-get install -y --no-install-recommends cmake build-essential git
+            git clone --depth 1 https://github.com/clMathLibraries/clFFT.git /tmp/clfft
+            cmake -S /tmp/clfft -B /tmp/clfft/build -DCMAKE_BUILD_TYPE=Release
+            cmake --build /tmp/clfft/build -j"$(nproc)"
+            sudo cmake --install /tmp/clfft/build
+            sudo ldconfig || true
+          fi
+      - name: Format
+        run: cargo fmt --check
+      - name: Test
+        run: cargo test
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Check features (Linux)
+        if: runner.os == 'Linux'
+        run: cargo check -p novasdr-server --features "soapysdr,clfft"

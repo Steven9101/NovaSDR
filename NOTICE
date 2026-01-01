@@ -1,0 +1,40 @@
+NovaSDR — Attribution and Licensing Notice
+
+This project is distributed under the GNU General Public License, Version 3 (GPLv3).
+See `LICENSE`.
+
+Origin and attribution
+----------------------
+
+NovaSDR is a continuation of PhantomSDR-plus (a fork maintained by `magicint1337`),
+which itself is derived from PhantomSDR work originating from:
+
+  https://github.com/rhgndf
+
+The Rust implementation is an independent rewrite, but it is based on the same overall
+architecture and protocol and was developed with the upstream project as the reference.
+Any portions of code and/or design derived from upstream are covered by GPLv3; therefore
+this repository is licensed under GPLv3 as well.
+
+Bundled artifacts and third-party software
+------------------------------------------
+
+NovaSDR includes third-party components and bundled generated artifacts (including
+WebAssembly modules used by the browser UI). See `docs/THIRD_PARTY.md` for the current
+inventory and attributions.
+
+Frontend
+--------
+
+The UI lives in the `frontend/` directory and is versioned in this repository.
+It may contain code and assets derived from upstream WebSDR work as well as additional
+third-party dependencies. When distributing binaries or source, ensure the frontend’s
+license and notices are included alongside this repository’s GPLv3 licensing.
+
+Copyright
+---------
+
+Copyright (c) 2025–2026, magicint1337.
+Copyright (c) 2025–2026, NovaSDR contributors.
+Upstream copyright remains with the upstream authors.
+

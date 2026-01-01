@@ -1,0 +1,279 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v0.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-20.04
+            target: x86_64-unknown-linux-gnu
+            package_ext: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            package_ext: zip
+          - os: macos-14
+            target: aarch64-apple-darwin
+            package_ext: tar.gz
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.NOVA_SUBMODULES_TOKEN || github.token }}
+      - name: Ensure tag points to main
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" "origin/main"; then
+            echo "Release tags must point to a commit reachable from origin/main." >&2
+            echo "Tagged commit: ${GITHUB_SHA}" >&2
+            exit 1
+          fi
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "frontend/package-lock.json"
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config \
+            libsoapysdr-dev \
+            soapysdr-tools \
+            ocl-icd-opencl-dev \
+            libclfft-dev \
+          || true
+
+          # If libclfft-dev isn't available on the runner image, build clFFT from source so the
+          # release binaries can still be built with --features clfft.
+          if ! ldconfig -p 2>/dev/null | grep -qi clfft; then
+            sudo apt-get install -y --no-install-recommends cmake build-essential git
+            git clone --depth 1 https://github.com/clMathLibraries/clFFT.git /tmp/clfft
+            cmake -S /tmp/clfft -B /tmp/clfft/build -DCMAKE_BUILD_TYPE=Release
+            cmake --build /tmp/clfft/build -j"$(nproc)"
+            sudo cmake --install /tmp/clfft/build
+            sudo ldconfig || true
+          fi
+
+      - name: Install system dependencies (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew update
+          brew install pkg-config soapysdr
+      - name: Build frontend
+        shell: bash
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Build backend
+        shell: bash
+        run: |
+          TAG="${{ github.ref_name }}"
+          if [[ -n "${{ inputs.tag }}" ]]; then TAG="${{ inputs.tag }}"; fi
+
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            cargo build -p novasdr-server --release
+            exit 0
+          fi
+
+          features="soapysdr"
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            features="soapysdr,clfft"
+
+            # Best-effort: include vkfft support when system packages are available on the runner.
+            # (Some Ubuntu images do not ship libvkfft-dev; in that case we ship without vkfft.)
+            if sudo apt-get install -y --no-install-recommends \
+              libvkfft-dev \
+              libvulkan-dev \
+              glslang-dev \
+              spirv-tools \
+              g++ \
+              >/dev/null 2>&1; then
+              if [[ -f /usr/include/vkfft/vkFFT.h || -f /usr/include/vkFFT/vkFFT.h || -f /usr/include/VkFFT/vkFFT.h || -f /usr/include/vkFFT.h ]]; then
+                features="${features},vkfft"
+              fi
+            fi
+          fi
+
+          NOVASDR_BUILD="${TAG}-${{ matrix.target }}" \
+            cargo build -p novasdr-server --release --features "${features}"
+
+      - name: Package
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          if [[ -n "${{ inputs.tag }}" ]]; then TAG="${{ inputs.tag }}"; fi
+
+          PKG="novasdr-${TAG}-${{ matrix.target }}"
+          mkdir -p "dist/${PKG}"
+
+          cp LICENSE NOTICE README.md "dist/${PKG}/"
+          mkdir -p "dist/${PKG}/config"
+          cp -R config/* "dist/${PKG}/config/" || true
+
+          mkdir -p "dist/${PKG}/frontend"
+          cp -R frontend/dist "dist/${PKG}/frontend/"
+
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            cp "target/release/novasdr-server.exe" "dist/${PKG}/"
+            (cd dist && 7z a "${PKG}.zip" "${PKG}" >/dev/null)
+          else
+            cp "target/release/novasdr-server" "dist/${PKG}/"
+            (cd dist && tar -czf "${PKG}.tar.gz" "${PKG}")
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.target }}
+          path: dist/*
+
+  build_rpi:
+    name: build (raspberry pi)
+    # Build an ARM64 (Raspberry Pi) binary using an ARM64 container on a regular x86_64 runner.
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.NOVA_SUBMODULES_TOKEN || github.token }}
+      - name: Ensure tag points to main
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" "origin/main"; then
+            echo "Release tags must point to a commit reachable from origin/main." >&2
+            echo "Tagged commit: ${GITHUB_SHA}" >&2
+            exit 1
+          fi
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Build and package (Pi / ARM64)
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          if [[ -n "${{ inputs.tag }}" ]]; then TAG="${{ inputs.tag }}"; fi
+
+          docker run --rm --platform linux/arm64 \
+            -e NOVASDR_TAG="${TAG}" \
+            -v "${PWD}:/workspace" \
+            -w /workspace \
+            debian:trixie \
+            bash -lc '
+              set -euo pipefail
+              export DEBIAN_FRONTEND=noninteractive
+
+              apt-get update
+              apt-get install -y --no-install-recommends \
+                ca-certificates \
+                curl \
+                g++ \
+                git \
+                npm \
+                clang \
+                llvm-dev \
+                libclang-dev \
+                pkg-config \
+                libsoapysdr-dev \
+                soapysdr-tools \
+                libvkfft-dev \
+                libvulkan-dev \
+                glslang-dev \
+                spirv-tools
+
+              # Optional on ARM64 (depends on distro packaging).
+              apt-get install -y --no-install-recommends \
+                ocl-icd-opencl-dev \
+                libclfft-dev \
+              || true
+
+              curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain stable
+              source "$HOME/.cargo/env"
+
+              # soapysdr-sys uses bindgen at build time; ensure bindgen can find libclang.
+              if command -v llvm-config >/dev/null 2>&1; then
+                export LIBCLANG_PATH="$(llvm-config --libdir)"
+              fi
+
+              cd /workspace/frontend
+              npm ci
+              npm run build
+
+              cd /workspace
+
+              features="soapysdr,vkfft"
+              if ldconfig -p 2>/dev/null | grep -qi clfft; then
+                features="${features},clfft"
+              fi
+
+              NOVASDR_BUILD="${NOVASDR_TAG}-aarch64-unknown-linux-gnu" \
+                cargo build -p novasdr-server --release --features "${features}"
+
+              TARGET="aarch64-unknown-linux-gnu"
+              PKG="novasdr-${NOVASDR_TAG}-${TARGET}"
+              rm -rf "dist/${PKG}"
+              mkdir -p "dist/${PKG}/config" "dist/${PKG}/frontend"
+              cp LICENSE NOTICE README.md "dist/${PKG}/"
+              cp -R config/* "dist/${PKG}/config/" || true
+              cp -R frontend/dist "dist/${PKG}/frontend/"
+              cp "target/release/novasdr-server" "dist/${PKG}/"
+              (cd dist && tar -czf "${PKG}.tar.gz" "${PKG}")
+            '
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-aarch64-unknown-linux-gnu
+          path: dist/*
+
+  release:
+    name: publish
+    needs: [build, build_rpi]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          files: |
+            dist/**/*.zip
+            dist/**/*.tar.gz

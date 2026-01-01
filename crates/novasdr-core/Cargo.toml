@@ -1,0 +1,37 @@
+[package]
+name = "novasdr-core"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+
+[dependencies]
+anyhow = "1.0.95"
+ash = { version = "0.38.0", optional = true }
+naga = { version = "0.20.0", default-features = false, features = ["wgsl-in", "spv-out"], optional = true }
+bytemuck = { version = "1.21.0", features = ["extern_crate_alloc"] }
+bytes = "1.9.0"
+opencl3 = { version = "0.12.1", optional = true }
+dashmap = "6.1.0"
+flacenc = "0.5.0"
+hex = "0.4.3"
+num-complex = "0.4.6"
+rand = "0.8.5"
+realfft = "3.4.0"
+rustfft = "6.2.0"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_bytes = "0.11.15"
+serde_json = "1.0.134"
+serde_with = "3.11.0"
+tracing = "0.1.41"
+zstd-safe = "7.2.1"
+
+[build-dependencies]
+cc = "1.2.7"
+pkg-config = "0.3.31"
+
+[dev-dependencies]
+proptest = "1.6.0"
+
+[features]
+clfft = ["dep:opencl3"]
+vkfft = ["dep:ash", "dep:naga"]
