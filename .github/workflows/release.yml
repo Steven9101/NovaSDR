@@ -24,12 +24,15 @@ jobs:
         include:
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
+            asset: linux-x86_64
             package_ext: tar.gz
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            asset: windows-x86_64
             package_ext: zip
           - os: macos-14
             target: aarch64-apple-darwin
+            asset: macos-aarch64
             package_ext: tar.gz
     steps:
       - uses: actions/checkout@v4
@@ -105,7 +108,7 @@ jobs:
             features="soapysdr,clfft"
           fi
 
-          NOVASDR_BUILD="${TAG}-${{ matrix.target }}" \
+          NOVASDR_BUILD="${TAG}-${{ matrix.asset }}" \
             cargo build -p novasdr-server --release --features "${features}"
 
       - name: Package
@@ -115,7 +118,7 @@ jobs:
           TAG="${{ github.ref_name }}"
           if [[ -n "${{ inputs.tag }}" ]]; then TAG="${{ inputs.tag }}"; fi
 
-          PKG="novasdr-${TAG}-${{ matrix.target }}"
+          PKG="novasdr-${TAG}-${{ matrix.asset }}"
           mkdir -p "dist/${PKG}"
 
           cp LICENSE NOTICE README.md "dist/${PKG}/"
@@ -135,7 +138,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: dist-${{ matrix.target }}
+          name: dist-${{ matrix.asset }}
           path: dist/*
 
   build_rpi:
@@ -184,20 +187,30 @@ jobs:
               apt-get install -y --no-install-recommends \
                 ca-certificates \
                 curl \
+                cmake \
                 g++ \
                 git \
                 clang \
                 llvm-dev \
                 libclang-dev \
-                pkg-config \
-                libsoapysdr-dev \
-                soapysdr-tools
+                make \
+                pkg-config
 
               # Optional on ARM64 (depends on distro packaging).
               apt-get install -y --no-install-recommends \
                 ocl-icd-opencl-dev \
                 libclfft-dev \
               || true
+
+              # Build SoapySDR from source for build-time linking (we do not ship/bundle it).
+              git clone --depth 1 https://github.com/pothosware/SoapySDR.git /tmp/SoapySDR
+              cmake -S /tmp/SoapySDR -B /tmp/SoapySDR/build \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DENABLE_PYTHON=OFF \
+                -DENABLE_TESTS=OFF
+              cmake --build /tmp/SoapySDR/build -j"$(nproc)"
+              cmake --install /tmp/SoapySDR/build
+              ldconfig || true
 
               curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain stable
               source "$HOME/.cargo/env"
@@ -214,23 +227,23 @@ jobs:
                 features="${features},clfft"
               fi
 
-              NOVASDR_BUILD="${NOVASDR_TAG}-aarch64-unknown-linux-gnu" \
+              NOVASDR_BUILD="${NOVASDR_TAG}-raspberrypi-aarch64" \
                 cargo build -p novasdr-server --release --features "${features}"
 
-              TARGET="aarch64-unknown-linux-gnu"
-              PKG="novasdr-${NOVASDR_TAG}-${TARGET}"
+              PKG="novasdr-${NOVASDR_TAG}-raspberrypi-aarch64"
               rm -rf "dist/${PKG}"
               mkdir -p "dist/${PKG}/config" "dist/${PKG}/frontend"
               cp LICENSE NOTICE README.md "dist/${PKG}/"
               cp -R config/* "dist/${PKG}/config/" || true
               cp -R frontend/dist "dist/${PKG}/frontend/"
               cp "target/release/novasdr-server" "dist/${PKG}/"
+
               (cd dist && tar -czf "${PKG}.tar.gz" "${PKG}")
             '
 
       - uses: actions/upload-artifact@v4
         with:
-          name: dist-aarch64-unknown-linux-gnu
+          name: dist-raspberrypi-aarch64
           path: dist/*
 
   release:
