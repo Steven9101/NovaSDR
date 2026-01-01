@@ -2,6 +2,30 @@ name: ci
 
 on:
   push:
+  pull_request:
+
+jobs:
+  rust:
+    # Keep the job name stable for branch protection, even if we update runners.
+    name: rust (ubuntu-20.04)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build (server)
+        run: cargo build -p novasdr-server --release
+
+      - name: Test (core)
+        run: cargo test -p novasdr-core
+
+name: ci
+
+on:
+  push:
     branches: [main]
   pull_request:
     branches: [main]

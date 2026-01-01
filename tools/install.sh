@@ -480,14 +480,33 @@ install_packages_clfft() {
 }
 
 vkfft_headers_are_available() {
+  vkfft_layout_ok() {
+    include_dir="$1"
+    [ -f "$include_dir/vkFFT.h" ] || return 1
+    [ -f "$include_dir/vkFFT/vkFFT_Structs/vkFFT_Structs.h" ] || return 1
+    return 0
+  }
+
+  glslang_ok=1
   for d in /usr/include /usr/local/include; do
-    if [ -f "$d/glslang/Include/glslang_c_interface.h" ]; then
-      return 0
+    if [ -f "$d/glslang/Include/glslang_c_interface.h" ] || [ -f "$d/glslang_c_interface.h" ]; then
+      glslang_ok=0
+      break
     fi
-    if [ -f "$d/glslang_c_interface.h" ]; then
+  done
+  if [ "$glslang_ok" -ne 0 ]; then
+    return 1
+  fi
+
+  for d in \
+    /usr/include/vkfft /usr/include/vkFFT /usr/include/VkFFT /usr/include \
+    /usr/local/include/vkfft /usr/local/include/vkFFT /usr/local/include/VkFFT /usr/local/include
+  do
+    if vkfft_layout_ok "$d"; then
       return 0
     fi
   done
+
   return 1
 }
 
@@ -771,7 +790,10 @@ install_sdrplay_api() {
 
   step "Download SDRplay API installer" run curl -fL -o "$installer" "$url"
   run chmod +x "$installer"
-  step "Run SDRplay API installer (interactive)" run "$installer"
+  # The installer reads from stdin. When this script is invoked via `curl ... | sh`,
+  # stdin is a pipe (not a tty), and license acceptance becomes impossible. Always
+  # attach the installer to /dev/tty so the user can interact with it.
+  step "Run SDRplay API installer (interactive)" run $SUDO sh -c "\"$installer\" </dev/tty"
 
   warn "SDRplay API install finished. Reboot may be required for the service/device to be available."
   warn "Service control: sudo systemctl start sdrplay | sudo systemctl stop sdrplay"
@@ -1013,7 +1035,8 @@ build_from_source() {
       exit 1
     fi
 
-    vkfft_mode="${NOVA_VKFFT:-skip}"
+    # If the user opts into the vkfft feature, default to installing dependencies.
+    vkfft_mode="${NOVA_VKFFT:-install}"
     if [ "${NOVA_NONINTERACTIVE:-}" = "1" ] && [ -z "${NOVA_VKFFT:-}" ]; then
       vkfft_mode="skip"
     fi
@@ -1021,8 +1044,9 @@ build_from_source() {
     if [ "$vkfft_mode" = "install" ]; then
       install_packages_vkfft
       if ! vkfft_headers_are_available; then
+        err "VkFFT headers not found after installation attempt (vkFFT.h)."
         err "glslang headers not found after installation attempt (glslang_c_interface.h)."
-        err "On Debian/Ubuntu, install: glslang-dev"
+        err "On Debian/Ubuntu, install: libvkfft-dev glslang-dev"
         exit 1
       fi
     else

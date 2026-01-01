@@ -4,6 +4,43 @@ on:
   push:
     tags:
       - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build (x86_64-unknown-linux-gnu)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build
+        run: cargo build -p novasdr-server --release
+
+      - name: Package
+        run: |
+          set -eu
+          mkdir -p dist
+          cp target/release/novasdr-server dist/
+          tar -C dist -czf novasdr-server-x86_64-unknown-linux-gnu.tar.gz novasdr-server
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            novasdr-server-x86_64-unknown-linux-gnu.tar.gz
+
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       tag:
