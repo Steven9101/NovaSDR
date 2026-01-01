@@ -82,7 +82,9 @@ fn main() {
         println!(
             "cargo:warning=Install a system package (e.g. Debian/RPi: `apt-get install -y libvkfft-dev`)."
         );
-        println!("cargo:warning=You can also set VKFFT_INCLUDE_DIR to the directory containing vkFFT.h.");
+        println!(
+            "cargo:warning=You can also set VKFFT_INCLUDE_DIR to the directory containing vkFFT.h."
+        );
         panic!("vkfft requires VkFFT headers (vkFFT.h)");
     };
 
