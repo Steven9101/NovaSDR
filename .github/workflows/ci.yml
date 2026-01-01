@@ -2,30 +2,6 @@ name: ci
 
 on:
   push:
-  pull_request:
-
-jobs:
-  rust:
-    # Keep the job name stable for branch protection, even if we update runners.
-    name: rust (ubuntu-20.04)
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust (stable)
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Build (server)
-        run: cargo build -p novasdr-server --release
-
-      - name: Test (core)
-        run: cargo test -p novasdr-core
-
-name: ci
-
-on:
-  push:
     branches: [main]
   pull_request:
     branches: [main]
@@ -40,17 +16,23 @@ on:
 
 jobs:
   rust:
-    name: rust (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    # Preserve the historical job name used in branch protection checks.
+    name: rust (${{ matrix.name }})
+    runs-on: ${{ matrix.runs_on }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, windows-latest]
+        include:
+          - name: ubuntu-20.04
+            runs_on: ubuntu-22.04
+          - name: windows-latest
+            runs_on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: false
           token: ${{ secrets.NOVA_SUBMODULES_TOKEN || github.token }}
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -71,7 +53,7 @@ jobs:
             libclfft-dev \
           || true
 
-          # Some distros/images may not ship libclfft-dev. Fall back to building from source so the
+          # Some runner images may not ship libclfft-dev. Fall back to building from source so the
           # clfft feature compile check stays meaningful.
           if ! ldconfig -p 2>/dev/null | grep -qi clfft; then
             sudo apt-get install -y --no-install-recommends cmake build-essential git
@@ -81,12 +63,16 @@ jobs:
             sudo cmake --install /tmp/clfft/build
             sudo ldconfig || true
           fi
+
       - name: Format
         run: cargo fmt --check
+
       - name: Test
         run: cargo test
+
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
+
       - name: Check features (Linux)
         if: runner.os == 'Linux'
         run: cargo check -p novasdr-server --features "soapysdr,clfft"
