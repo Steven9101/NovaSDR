@@ -196,7 +196,7 @@ fn default_host() -> String {
     "0.0.0.0".to_string()
 }
 fn default_html_root() -> String {
-    "html/".to_string()
+    "frontend/dist/".to_string()
 }
 fn default_threads() -> usize {
     0

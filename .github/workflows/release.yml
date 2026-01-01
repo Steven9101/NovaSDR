@@ -48,11 +48,7 @@ jobs:
             exit 1
           fi
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: "frontend/package-lock.json"
+      # The frontend is a git submodule and ships with prebuilt artifacts in frontend/dist/.
 
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
@@ -86,12 +82,12 @@ jobs:
           set -euo pipefail
           brew update
           brew install pkg-config soapysdr
-      - name: Build frontend
+
+      - name: Verify frontend/dist exists
         shell: bash
         run: |
-          cd frontend
-          npm ci
-          npm run build
+          set -euo pipefail
+          test -f frontend/dist/index.html
 
       - name: Build backend
         shell: bash
@@ -190,7 +186,6 @@ jobs:
                 curl \
                 g++ \
                 git \
-                npm \
                 clang \
                 llvm-dev \
                 libclang-dev \
@@ -211,10 +206,6 @@ jobs:
               if command -v llvm-config >/dev/null 2>&1; then
                 export LIBCLANG_PATH="$(llvm-config --libdir)"
               fi
-
-              cd /workspace/frontend
-              npm ci
-              npm run build
 
               cd /workspace
 

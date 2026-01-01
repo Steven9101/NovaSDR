@@ -51,6 +51,9 @@ fn resolve_html_root(configured: &str) -> std::path::PathBuf {
     let Ok(exe) = std::env::current_exe() else {
         return configured_path;
     };
+    // current_exe() can return a symlink path (common when installed via /usr/local/bin -> /opt/...).
+    // Prefer resolving the real binary path so relative html_root works in service environments.
+    let exe = exe.canonicalize().unwrap_or(exe);
     let Some(exe_dir) = exe.parent() else {
         return configured_path;
     };
