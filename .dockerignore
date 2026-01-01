@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Build artifacts
+target/
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation (not needed in image)
+docs/
+*.md
+!README.md
+
+# CI/CD
+.github/
+
+# Logs
+*.log
+logs/
+
+# Other
+.env
+.env.*
+!.env.example
