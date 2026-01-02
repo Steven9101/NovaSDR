@@ -87,9 +87,8 @@ fn runtime_defaults_respect_configured_ssb_passband() {
     };
     let rt = cfg.runtime().unwrap();
 
-    let expected_width_bins =
-        ((2800_i64 * (rt.fft_result_size as i64) / rt.sps) - (100_i64 * (rt.fft_result_size as i64) / rt.sps))
-            as i32;
+    let expected_width_bins = ((2800_i64 * (rt.fft_result_size as i64) / rt.sps)
+        - (100_i64 * (rt.fft_result_size as i64) / rt.sps)) as i32;
     assert_eq!(rt.default_mode_str, "USB");
     assert_eq!(rt.default_r - rt.default_l, expected_width_bins);
 }
