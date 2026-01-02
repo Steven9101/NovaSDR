@@ -938,6 +938,34 @@ fn edit_receiver(receiver: &mut Value) -> anyhow::Result<()> {
     .context("prompt default modulation")?;
     defaults.insert("modulation".to_string(), json!(modulation));
 
+    let modulation_upper = defaults
+        .get("modulation")
+        .and_then(Value::as_str)
+        .unwrap_or("USB")
+        .to_ascii_uppercase();
+    if modulation_upper == "USB" || modulation_upper == "LSB" {
+        let current_lowcut = defaults
+            .get("ssb_lowcut_hz")
+            .and_then(Value::as_i64)
+            .unwrap_or(300);
+        let current_highcut = defaults
+            .get("ssb_highcut_hz")
+            .and_then(Value::as_i64)
+            .unwrap_or(3000);
+
+        loop {
+            let lowcut = prompt_passband_hz("SSB low-cut (ssb_lowcut_hz)", current_lowcut)?;
+            let highcut = prompt_passband_hz("SSB high-cut (ssb_highcut_hz)", current_highcut)?;
+            if highcut <= lowcut {
+                ui::line("Invalid SSB passband: high-cut must be greater than low-cut.");
+                continue;
+            }
+            defaults.insert("ssb_lowcut_hz".to_string(), json!(lowcut));
+            defaults.insert("ssb_highcut_hz".to_string(), json!(highcut));
+            break;
+        }
+    }
+
     let Some(driver) = input.get_mut("driver").and_then(Value::as_object_mut) else {
         anyhow::bail!("receiver.input.driver must be an object");
     };
@@ -1386,6 +1414,24 @@ fn prompt_audio_rate_hz(label: &str, default_hz: i64) -> anyhow::Result<i64> {
             Ok(sps) => return Ok(sps),
             Err(e) => ui::line(&format!("Invalid audio rate: {e}")),
         }
+    }
+}
+
+fn prompt_passband_hz(label: &str, default_hz: i64) -> anyhow::Result<i64> {
+    loop {
+        let raw = Text::new(&format!("{label} (Hz; integer)"))
+            .with_default(&default_hz.to_string())
+            .prompt()
+            .with_context(|| format!("prompt {label}"))?;
+        let parsed = raw
+            .trim()
+            .parse::<i64>()
+            .with_context(|| format!("parse {label}"))?;
+        if parsed < 0 {
+            ui::line("Value must be >= 0.");
+            continue;
+        }
+        return Ok(parsed);
     }
 }
 

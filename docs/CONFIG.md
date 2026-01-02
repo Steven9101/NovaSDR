@@ -96,6 +96,26 @@ Some runtime values are derived from the configuration:
 
 The server clamps the default audio window (`receivers[].input.defaults`) to fit into `audio_max_fft_size` so audio always starts.
 
+## Optional: USB/LSB default passband
+
+By default, NovaSDR uses:
+
+- `USB`: `+300..+3000 Hz`
+- `LSB`: `-3000..-300 Hz`
+
+To override that per receiver, add `ssb_lowcut_hz` / `ssb_highcut_hz` under `receivers[].input.defaults`:
+
+```json
+{
+  "defaults": {
+    "frequency": -1,
+    "modulation": "USB",
+    "ssb_lowcut_hz": 100,
+    "ssb_highcut_hz": 2800
+  }
+}
+```
+
 ## Input sample formats
 
 `receivers[].input.driver.format` defines how input bytes are converted to `f32`:

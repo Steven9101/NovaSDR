@@ -104,6 +104,14 @@ pub struct ReceiverDefaults {
     pub frequency: i64,
     #[serde(default = "default_default_modulation")]
     pub modulation: String,
+    /// Optional SSB default passband edges in Hz (positive values).
+    ///
+    /// When `modulation` is `USB`, the default audio window is `+lowcut..+highcut`.
+    /// When `modulation` is `LSB`, the default audio window is `-highcut..-lowcut`.
+    #[serde(default)]
+    pub ssb_lowcut_hz: Option<i64>,
+    #[serde(default)]
+    pub ssb_highcut_hz: Option<i64>,
 }
 
 impl Default for ReceiverDefaults {
@@ -111,6 +119,8 @@ impl Default for ReceiverDefaults {
         Self {
             frequency: default_default_frequency(),
             modulation: default_default_modulation(),
+            ssb_lowcut_hz: None,
+            ssb_highcut_hz: None,
         }
     }
 }
@@ -469,16 +479,28 @@ impl Config {
             (default_frequency - basefreq) as f64 * (fft_result_size as f64) / (sps as f64)
         };
 
-        let offsets_0_3 = (300_i64) * (fft_result_size as i64) / sps;
         let offsets_3 = (3000_i64) * (fft_result_size as i64) / sps;
         let offsets_5 = (5000_i64) * (fft_result_size as i64) / sps;
         let offsets_96 = (96000_i64) * (fft_result_size as i64) / sps;
 
+        let ssb_lowcut_hz = input.defaults.ssb_lowcut_hz.unwrap_or(300);
+        let ssb_highcut_hz = input.defaults.ssb_highcut_hz.unwrap_or(3000);
+        anyhow::ensure!(
+            ssb_lowcut_hz >= 0,
+            "receiver.input.defaults.ssb_lowcut_hz must be >= 0"
+        );
+        anyhow::ensure!(
+            ssb_highcut_hz > ssb_lowcut_hz,
+            "receiver.input.defaults.ssb_highcut_hz must be > receiver.input.defaults.ssb_lowcut_hz"
+        );
+        let offsets_ssb_low = ssb_lowcut_hz * (fft_result_size as i64) / sps;
+        let offsets_ssb_high = ssb_highcut_hz * (fft_result_size as i64) / sps;
+
         let default_mode_str = input.defaults.modulation.to_uppercase();
         let (default_l, default_r) = match default_mode_str.as_str() {
             "LSB" => (
-                (default_m as i64 - offsets_3) as i32,
-                (default_m as i64 - offsets_0_3) as i32,
+                (default_m as i64 - offsets_ssb_high) as i32,
+                (default_m as i64 - offsets_ssb_low) as i32,
             ),
             "AM" | "SAM" | "FM" | "FMC" => (
                 (default_m as i64 - offsets_5) as i32,
@@ -489,8 +511,8 @@ impl Config {
                 (default_m as i64 + offsets_96) as i32,
             ),
             "USB" => (
-                (default_m as i64 + offsets_0_3) as i32,
-                (default_m as i64 + offsets_3) as i32,
+                (default_m as i64 + offsets_ssb_low) as i32,
+                (default_m as i64 + offsets_ssb_high) as i32,
             ),
             _ => (default_m as i32, (default_m as i64 + offsets_3) as i32),
         };

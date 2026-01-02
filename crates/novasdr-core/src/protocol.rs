@@ -8,6 +8,10 @@ pub struct BasicInfoDefaults {
     pub l: i32,
     pub m: f64,
     pub r: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ssb_lowcut_hz: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ssb_highcut_hz: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize)]

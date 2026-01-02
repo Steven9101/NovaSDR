@@ -174,12 +174,29 @@ impl AppState {
         let bands = self.bands.read().await;
         let bands_str = json_stringify_value(&bands);
 
+        let ssb_lowcut_hz = receiver
+            .receiver
+            .input
+            .defaults
+            .ssb_lowcut_hz
+            .unwrap_or(300)
+            .max(0);
+        let ssb_highcut_hz = receiver
+            .receiver
+            .input
+            .defaults
+            .ssb_highcut_hz
+            .unwrap_or(3000)
+            .max(ssb_lowcut_hz.saturating_add(1));
+
         let defaults = json!({
             "frequency": receiver.rt.default_frequency,
             "modulation": receiver.rt.default_mode_str,
             "l": receiver.rt.default_l,
             "m": receiver.rt.default_m,
             "r": receiver.rt.default_r,
+            "ssb_lowcut_hz": ssb_lowcut_hz,
+            "ssb_highcut_hz": ssb_highcut_hz,
         });
 
         let out = json!({

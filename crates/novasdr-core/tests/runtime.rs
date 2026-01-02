@@ -25,6 +25,8 @@ fn base_config(signal: SignalType) -> Config {
             defaults: ReceiverDefaults {
                 frequency: -1,
                 modulation: "USB".to_string(),
+                ssb_lowcut_hz: None,
+                ssb_highcut_hz: None,
             },
         },
     };

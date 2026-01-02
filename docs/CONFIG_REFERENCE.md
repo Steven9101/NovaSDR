@@ -119,12 +119,14 @@ Extra keys supported for `{"kind":"soapysdr", ...}`:
 |---|---:|---|
 | `frequency` | int | `-1` means "center" |
 | `modulation` | string | `USB`, `LSB`, `AM`, `SAM`, `FM`, `FMC`, `WBFM` |
+| `ssb_lowcut_hz` | int | Optional. Default `300`. Only used when `modulation` is `USB`/`LSB`. |
+| `ssb_highcut_hz` | int | Optional. Default `3000`. Only used when `modulation` is `USB`/`LSB`. Must be `> ssb_lowcut_hz`. |
 
 The backend clamps the derived default `(l,r)` audio window to `audio_max_fft_size` so `/audio` always starts.
 
 Default audio window shapes (derived from `defaults.modulation`):
-- `USB`: `+300..+3000 Hz` relative to the tuned carrier
-- `LSB`: `-3000..-300 Hz` relative to the tuned carrier
+- `USB`: `+ssb_lowcut_hz..+ssb_highcut_hz` relative to the tuned carrier (defaults: `+300..+3000 Hz`)
+- `LSB`: `-ssb_highcut_hz..-ssb_lowcut_hz` relative to the tuned carrier (defaults: `-3000..-300 Hz`)
 - `AM` / `SAM` / `FM`: `±5 kHz`
 - `FMC`: `±5 kHz` (frontend applies an extra ~300 Hz high-pass to reduce CTCSS)
 - `WBFM`: `±96 kHz` (default only; usable width is limited by `audio_sps`)
