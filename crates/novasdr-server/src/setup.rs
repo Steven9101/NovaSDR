@@ -735,7 +735,7 @@ fn configure_receivers(root: &mut Value) -> anyhow::Result<()> {
                 "smeter_offset": 0,
                 "accelerator": "none",
                 "driver": { "kind": "stdin", "format": "u8" },
-                "defaults": { "frequency": -1, "modulation": "USB" }
+                "defaults": { "frequency": -1, "modulation": "USB", "squelch_enabled": false }
               }
             });
             edit_receiver(&mut entry)?;

@@ -121,6 +121,7 @@ Extra keys supported for `{"kind":"soapysdr", ...}`:
 | `modulation` | string | `USB`, `LSB`, `AM`, `SAM`, `FM`, `FMC`, `WBFM` |
 | `ssb_lowcut_hz` | int | Optional. Default `300`. Only used when `modulation` is `USB`/`LSB`. |
 | `ssb_highcut_hz` | int | Optional. Default `3000`. Only used when `modulation` is `USB`/`LSB`. Must be `> ssb_lowcut_hz`. |
+| `squelch_enabled` | bool | Optional. Default `false`. If `true`, the UI may enable squelch automatically on first connect. |
 
 The backend clamps the derived default `(l,r)` audio window to `audio_max_fft_size` so `/audio` always starts.
 

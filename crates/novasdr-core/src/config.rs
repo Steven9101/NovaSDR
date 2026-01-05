@@ -112,6 +112,8 @@ pub struct ReceiverDefaults {
     pub ssb_lowcut_hz: Option<i64>,
     #[serde(default)]
     pub ssb_highcut_hz: Option<i64>,
+    #[serde(default)]
+    pub squelch_enabled: bool,
 }
 
 impl Default for ReceiverDefaults {
@@ -121,6 +123,7 @@ impl Default for ReceiverDefaults {
             modulation: default_default_modulation(),
             ssb_lowcut_hz: None,
             ssb_highcut_hz: None,
+            squelch_enabled: false,
         }
     }
 }

@@ -12,6 +12,8 @@ pub struct BasicInfoDefaults {
     pub ssb_lowcut_hz: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ssb_highcut_hz: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub squelch_enabled: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize)]

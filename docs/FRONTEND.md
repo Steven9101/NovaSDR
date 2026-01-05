@@ -75,6 +75,17 @@ Expectations:
 - audio stream bytes are FLAC (mono, 16-bit samples)
 - packets are CBOR maps with a `data` field containing FLAC bytes
 
+### iOS background playback
+
+On iOS, WebAudio output via `AudioContext.destination` is frequently suspended when the page is backgrounded.
+
+To keep audio playing reliably, the frontend routes the decoded audio through an `HTMLAudioElement` by:
+- rendering the audio graph into a `MediaStreamAudioDestinationNode`
+- assigning `dest.stream` to `audio.srcObject`
+- starting playback via `audio.play()` from a user gesture
+
+Implementation: `frontend/src/components/audio/useAudioClient.ts`.
+
 ## Settings persistence
 
 The Settings dialog can persist a small set of configuration values to `localStorage`.

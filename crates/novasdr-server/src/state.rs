@@ -197,6 +197,7 @@ impl AppState {
             "r": receiver.rt.default_r,
             "ssb_lowcut_hz": ssb_lowcut_hz,
             "ssb_highcut_hz": ssb_highcut_hz,
+            "squelch_enabled": receiver.receiver.input.defaults.squelch_enabled,
         });
 
         let out = json!({

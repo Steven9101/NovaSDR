@@ -213,7 +213,7 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
         m: receiver.rt.default_m,
         r: receiver.rt.default_r,
         mute: false,
-        squelch_enabled: false,
+        squelch_enabled: receiver.receiver.input.defaults.squelch_enabled,
         demodulation: DemodulationMode::from_str_upper(receiver.rt.default_mode_str.as_str())
             .unwrap_or(DemodulationMode::Usb),
         agc_speed: AgcSpeed::Default,
@@ -323,7 +323,8 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
                                 p.m = receiver.rt.default_m;
                                 p.r = receiver.rt.default_r;
                                 p.mute = false;
-                                p.squelch_enabled = false;
+                                p.squelch_enabled =
+                                    receiver.receiver.input.defaults.squelch_enabled;
                                 p.demodulation = DemodulationMode::from_str_upper(
                                     receiver.rt.default_mode_str.as_str(),
                                 )

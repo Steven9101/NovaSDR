@@ -17,6 +17,7 @@ On `/audio` and `/waterfall`, the first WebSocket message is a JSON object conta
 
 - `sps`, `fft_size`, `fft_result_size`, `basefreq`, `total_bandwidth`
 - `defaults` (default tuning window + mode)
+  - `defaults.squelch_enabled` (optional; if present, clients may enable squelch automatically)
 - `waterfall_compression` (`"zstd"`)
 - `audio_compression` (`"flac"`)
 - `overlap`, `fft_overlap` (both `fft_size/2` for the 50 percent overlap model)
@@ -32,6 +33,7 @@ Clients send JSON objects with `cmd`:
 - `window` (`l`, `r`, optional `m`, optional `level`)
 - `demodulation` (`demodulation`)
 - `mute` (`mute`)
+- `squelch` (`enabled`)
 - `agc` (`speed`, optional `attack`, optional `release`)
 - `chat` (`username`, `message`, optional `user_id`, optional `reply_to_id`, optional `reply_to_username`)
 

@@ -67,7 +67,7 @@ The registration payload includes server name, antenna, grid locator, hostname, 
         "accelerator": "none",
         "smeter_offset": 0,
         "driver": { "kind": "stdin", "format": "u8" },
-        "defaults": { "frequency": -1, "modulation": "USB" }
+        "defaults": { "frequency": -1, "modulation": "USB", "squelch_enabled": false }
       }
     }
   ]
