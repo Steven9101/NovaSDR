@@ -27,6 +27,7 @@ fn base_config(signal: SignalType) -> Config {
                 modulation: "USB".to_string(),
                 ssb_lowcut_hz: None,
                 ssb_highcut_hz: None,
+                squelch_enabled: false,
             },
         },
     };

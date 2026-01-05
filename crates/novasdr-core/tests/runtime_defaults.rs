@@ -28,6 +28,7 @@ fn runtime_defaults_use_configured_modulation() {
                 modulation: "LSB".to_string(),
                 ssb_lowcut_hz: None,
                 ssb_highcut_hz: None,
+                squelch_enabled: false,
             },
         },
     };
@@ -75,6 +76,7 @@ fn runtime_defaults_respect_configured_ssb_passband() {
                 modulation: "USB".to_string(),
                 ssb_lowcut_hz: Some(100),
                 ssb_highcut_hz: Some(2800),
+                squelch_enabled: false,
             },
         },
     };
