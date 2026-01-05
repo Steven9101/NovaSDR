@@ -67,7 +67,7 @@ Enable it in: Settings -> Features -> Wikis, then rerun:
     $name = [System.IO.Path]::GetFileNameWithoutExtension($doc.Name)
     $out = if ($name -eq "index") { Join-Path $wikiDir "Home.md" } else { Join-Path $wikiDir ($name + ".md") }
 
-    $text = Get-Content -LiteralPath $doc.FullName -Raw
+    $text = Get-Content -LiteralPath $doc.FullName -Raw -Encoding utf8
     $text = $text -replace '\]\(index\.md\)', '](Home)'
     $text = $text -replace '\]\(([^)]+)\.md\)', ']($1)'
 
