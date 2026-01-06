@@ -312,12 +312,7 @@ fn configure_global(cfg: &mut Value) -> anyhow::Result<()> {
     server.insert("port".to_string(), json!(port));
 
     let host = Text::new("Bind host")
-        .with_default(
-            server
-                .get("host")
-                .and_then(Value::as_str)
-                .unwrap_or("[::]"),
-        )
+        .with_default(server.get("host").and_then(Value::as_str).unwrap_or("[::]"))
         .prompt()
         .context("prompt host")?;
     server.insert("host".to_string(), json!(host));
