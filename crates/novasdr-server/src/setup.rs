@@ -173,7 +173,7 @@ fn load_or_create_config(path: &Path) -> anyhow::Result<Value> {
     }
 
     Ok(json!({
-      "server": { "port": 9002, "host": "0.0.0.0", "html_root": "frontend/dist/", "otherusers": 1, "threads": 1 },
+      "server": { "port": 9002, "host": "[::]", "html_root": "frontend/dist/", "otherusers": 1, "threads": 1 },
       "websdr": { "register_online": false, "name": "NovaSDR", "antenna": "", "grid_locator": "-", "hostname": "", "operator": "", "email": "", "callsign_lookup_url": "https://www.qrz.com/db/", "chat_enabled": true },
       "limits": { "audio": 1000, "waterfall": 1000, "events": 1000 }
     }))
@@ -316,7 +316,7 @@ fn configure_global(cfg: &mut Value) -> anyhow::Result<()> {
             server
                 .get("host")
                 .and_then(Value::as_str)
-                .unwrap_or("0.0.0.0"),
+                .unwrap_or("[::]"),
         )
         .prompt()
         .context("prompt host")?;

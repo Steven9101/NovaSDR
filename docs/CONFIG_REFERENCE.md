@@ -18,7 +18,7 @@ If the files are missing, NovaSDR creates defaults on startup (empty markers; a 
 | Key | Type | Default | Notes |
 |---|---:|---:|---|
 | `port` | int | `9002` | Listen port |
-| `host` | string | `"0.0.0.0"` | Bind address |
+| `host` | string | `"[::]"` | Bind address |
 | `html_root` | string | `"html/"` | Static UI directory (e.g. `frontend/dist/`) |
 | `otherusers` | int | `1` | Enables "other users" overlays (`/events` `signal_changes`) |
 | `threads` | int | `0` | Tokio worker thread count (`0` = auto; clamped to available CPU cores) |

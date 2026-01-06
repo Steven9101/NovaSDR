@@ -25,6 +25,11 @@ pub fn router(state: Arc<state::AppState>) -> Router {
 pub async fn serve(state: Arc<state::AppState>) -> anyhow::Result<()> {
     let host = state.cfg.server.host.clone();
     let port = state.cfg.server.port;
+    let host = if host.contains(':') && !host.starts_with('[') {
+        format!("[{host}]")
+    } else {
+        host
+    };
     let addr: SocketAddr = format!("{host}:{port}")
         .parse()
         .context("parse bind address")?;

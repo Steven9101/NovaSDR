@@ -1,7 +1,7 @@
 {
   "server": {
     "port": 9002,
-    "host": "0.0.0.0",
+    "host": "[::]",
     "html_root": "frontend/dist/",
     "otherusers": 1,
     "threads": 0
