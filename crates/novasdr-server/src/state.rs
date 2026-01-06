@@ -477,6 +477,20 @@ async fn maybe_load_json(path: &Path) -> Option<serde_json::Value> {
     serde_json::from_str::<serde_json::Value>(&raw).ok()
 }
 
+pub async fn load_overlays_once(state: Arc<AppState>, overlays_dir: std::path::PathBuf) {
+    let markers_path = overlays_dir.join("markers.json");
+    if let Some(v) = maybe_load_json(&markers_path).await {
+        let mut cur = state.markers.write().await;
+        *cur = v;
+    }
+
+    let bands_path = overlays_dir.join("bands.json");
+    if let Some(v) = maybe_load_json(&bands_path).await {
+        let mut cur = state.bands.write().await;
+        *cur = v;
+    }
+}
+
 pub fn spawn_marker_watcher(state: Arc<AppState>, overlays_dir: std::path::PathBuf) {
     tokio::spawn(async move {
         loop {

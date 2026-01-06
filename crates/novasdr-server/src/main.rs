@@ -296,6 +296,7 @@ fn main() -> anyhow::Result<()> {
 
             let overlays =
                 overlays::ensure_default_overlays(&config_path).context("ensure overlays")?;
+            state::load_overlays_once(state.clone(), overlays.dir.clone()).await;
             state::spawn_marker_watcher(state.clone(), overlays.dir.clone());
             state::spawn_bands_watcher(state.clone(), overlays.dir);
             registration::spawn(state.clone());
