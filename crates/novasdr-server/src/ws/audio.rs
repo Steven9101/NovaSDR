@@ -814,6 +814,8 @@ impl AudioPipeline {
                 add_f32(&mut self.real[..self.audio_fft_size / 2], &self.real_prev);
             }
             DemodulationMode::Am | DemodulationMode::Sam | DemodulationMode::Fm => {
+                let need_carrier = mode == DemodulationMode::Sam;
+
                 self.buf_in.fill(Complex32::new(0.0, 0.0));
                 let pos_copy_l = 0.max(audio_m_rel);
                 let pos_copy_r = len.min(audio_m_rel + half);
@@ -838,31 +840,37 @@ impl AudioPipeline {
                 self.ifft
                     .process_with_scratch(&mut self.baseband, &mut self.scratch);
 
-                self.carrier.copy_from_slice(&self.buf_in);
-                let cutoff =
-                    (500 * self.audio_fft_size / self.audio_rate).min(self.audio_fft_size / 2);
-                for i in cutoff..(self.audio_fft_size - cutoff) {
-                    self.carrier[i] = Complex32::new(0.0, 0.0);
+                if need_carrier {
+                    self.carrier.copy_from_slice(&self.buf_in);
+                    let cutoff =
+                        (500 * self.audio_fft_size / self.audio_rate).min(self.audio_fft_size / 2);
+                    for i in cutoff..(self.audio_fft_size - cutoff) {
+                        self.carrier[i] = Complex32::new(0.0, 0.0);
+                    }
+                    self.ifft
+                        .process_with_scratch(&mut self.carrier, &mut self.scratch);
                 }
-                self.ifft
-                    .process_with_scratch(&mut self.carrier, &mut self.scratch);
 
                 if frame_num % 2 == 1
                     && (((audio_mid_idx % 2 == 0) && !is_real_input)
                         || ((audio_mid_idx % 2 != 0) && is_real_input))
                 {
                     negate_complex(&mut self.baseband);
-                    negate_complex(&mut self.carrier);
+                    if need_carrier {
+                        negate_complex(&mut self.carrier);
+                    }
                 }
 
                 add_complex(
                     &mut self.baseband[..self.audio_fft_size / 2],
                     &self.baseband_prev,
                 );
-                add_complex(
-                    &mut self.carrier[..self.audio_fft_size / 2],
-                    &self.carrier_prev,
-                );
+                if need_carrier {
+                    add_complex(
+                        &mut self.carrier[..self.audio_fft_size / 2],
+                        &self.carrier_prev,
+                    );
+                }
 
                 match mode {
                     DemodulationMode::Am => {
@@ -895,8 +903,10 @@ impl AudioPipeline {
             .copy_from_slice(&self.real[self.audio_fft_size / 2..]);
         self.baseband_prev
             .copy_from_slice(&self.baseband[self.audio_fft_size / 2..]);
-        self.carrier_prev
-            .copy_from_slice(&self.carrier[self.audio_fft_size / 2..]);
+        if mode == DemodulationMode::Sam {
+            self.carrier_prev
+                .copy_from_slice(&self.carrier[self.audio_fft_size / 2..]);
+        }
 
         self.apply_agc_settings(params);
 
