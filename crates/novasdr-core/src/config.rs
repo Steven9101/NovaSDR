@@ -482,12 +482,22 @@ impl Config {
             (default_frequency - basefreq) as f64 * (fft_result_size as f64) / (sps as f64)
         };
 
-        let offsets_3 = (3000_i64) * (fft_result_size as i64) / sps;
-        let offsets_5 = (5000_i64) * (fft_result_size as i64) / sps;
-        let offsets_96 = (96000_i64) * (fft_result_size as i64) / sps;
+        // Convert Hz offsets into FFT bins. For real-input receivers, `total_bandwidth = sps/2`,
+        // so the bin->Hz scale is doubled vs complex input.
+        let hz_to_bins = |hz: i64| -> i64 {
+            let scale = if is_real { 2_i128 } else { 1_i128 };
+            let hz = hz as i128;
+            let fft = fft_result_size as i128;
+            let sps = sps as i128;
+            ((hz * fft * scale) / sps) as i64
+        };
 
-        let ssb_lowcut_hz = input.defaults.ssb_lowcut_hz.unwrap_or(300);
-        let ssb_highcut_hz = input.defaults.ssb_highcut_hz.unwrap_or(3000);
+        let offsets_3 = hz_to_bins(3000);
+        let offsets_5 = hz_to_bins(5000);
+        let offsets_96 = hz_to_bins(96000);
+
+        let ssb_lowcut_hz = input.defaults.ssb_lowcut_hz.unwrap_or(100);
+        let ssb_highcut_hz = input.defaults.ssb_highcut_hz.unwrap_or(2800);
         anyhow::ensure!(
             ssb_lowcut_hz >= 0,
             "receiver.input.defaults.ssb_lowcut_hz must be >= 0"
@@ -496,8 +506,8 @@ impl Config {
             ssb_highcut_hz > ssb_lowcut_hz,
             "receiver.input.defaults.ssb_highcut_hz must be > receiver.input.defaults.ssb_lowcut_hz"
         );
-        let offsets_ssb_low = ssb_lowcut_hz * (fft_result_size as i64) / sps;
-        let offsets_ssb_high = ssb_highcut_hz * (fft_result_size as i64) / sps;
+        let offsets_ssb_low = hz_to_bins(ssb_lowcut_hz);
+        let offsets_ssb_high = hz_to_bins(ssb_highcut_hz);
 
         let default_mode_str = input.defaults.modulation.to_uppercase();
         let (default_l, default_r) = match default_mode_str.as_str() {

@@ -22,8 +22,24 @@ use novasdr_core::{
 use num_complex::Complex32;
 use realfft::{ComplexToReal, RealFftPlanner};
 use rustfft::{Fft as RustFft, FftPlanner};
+use serde_json::json;
 use std::net::SocketAddr;
 use std::sync::Arc;
+
+fn with_audio_unique_id(basic_info: String, unique_id: &str) -> String {
+    let Ok(mut v) = serde_json::from_str::<serde_json::Value>(&basic_info) else {
+        return basic_info;
+    };
+    if let serde_json::Value::Object(map) = &mut v {
+        map.insert("audio_unique_id".to_string(), json!(unique_id));
+    } else {
+        return basic_info;
+    }
+    match serde_json::to_string(&v) {
+        Ok(s) => s,
+        Err(_) => basic_info,
+    }
+}
 
 fn scaled_relative_variance_power(bins: &[Complex32]) -> f32 {
     let n = bins.len();
@@ -255,7 +271,10 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
         }
     });
 
-    let basic_info = state.basic_info_json(receiver_id.as_str()).await;
+    let basic_info = with_audio_unique_id(
+        state.basic_info_json(receiver_id.as_str()).await,
+        &unique_id,
+    );
     if out_tx
         .send(AudioOutbound::Switch {
             settings_json: basic_info,
@@ -297,7 +316,10 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
                         }
 
                         if next_id == receiver_id {
-                            let settings_json = state.basic_info_json(receiver_id.as_str()).await;
+                            let settings_json = with_audio_unique_id(
+                                state.basic_info_json(receiver_id.as_str()).await,
+                                &unique_id,
+                            );
                             let header_pkt = match client
                                 .pipeline
                                 .lock()
@@ -386,7 +408,10 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
                                 None => continue,
                             };
 
-                        let next_basic_info = state.basic_info_json(next_id.as_str()).await;
+                        let next_basic_info = with_audio_unique_id(
+                            state.basic_info_json(next_id.as_str()).await,
+                            &unique_id,
+                        );
 
                         let old_receiver_id = receiver_id.clone();
                         receiver.audio_clients.remove(&client_id);

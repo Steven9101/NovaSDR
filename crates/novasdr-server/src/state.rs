@@ -179,14 +179,14 @@ impl AppState {
             .input
             .defaults
             .ssb_lowcut_hz
-            .unwrap_or(300)
+            .unwrap_or(100)
             .max(0);
         let ssb_highcut_hz = receiver
             .receiver
             .input
             .defaults
             .ssb_highcut_hz
-            .unwrap_or(3000)
+            .unwrap_or(2800)
             .max(ssb_lowcut_hz.saturating_add(1));
 
         let defaults = json!({

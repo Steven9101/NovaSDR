@@ -942,11 +942,11 @@ fn edit_receiver(receiver: &mut Value) -> anyhow::Result<()> {
         let current_lowcut = defaults
             .get("ssb_lowcut_hz")
             .and_then(Value::as_i64)
-            .unwrap_or(300);
+            .unwrap_or(100);
         let current_highcut = defaults
             .get("ssb_highcut_hz")
             .and_then(Value::as_i64)
-            .unwrap_or(3000);
+            .unwrap_or(2800);
 
         loop {
             let lowcut = prompt_passband_hz("SSB low-cut (ssb_lowcut_hz)", current_lowcut)?;

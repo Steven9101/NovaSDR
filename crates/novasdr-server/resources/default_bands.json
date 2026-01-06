@@ -122,7 +122,8 @@
       "endFreq": 10150000,
       "color": "rgba(50, 168, 72, 0.6)",
       "modes": [
-        { "mode": "CW", "startHz": 10100000, "endHz": 10150000, "startFreq": 10100000, "endFreq": 10150000 }
+        { "mode": "CW", "startHz": 10100000, "endHz": 10130000, "startFreq": 10100000, "endFreq": 10130000 },
+        { "mode": "USB", "startHz": 10130000, "endHz": 10150000, "startFreq": 10130000, "endFreq": 10150000 }
       ]
     },
     {
