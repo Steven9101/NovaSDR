@@ -49,6 +49,20 @@ Enforced at WebSocket connection time. When the limit is reached, new connection
 | `events` | int | `1000` |
 | `ws_per_ip` | int | `50` |
 
+### `updates`
+
+NovaSDR can check GitHub releases on startup and emit a prominent console notice when a newer version exists.
+It does not auto-update.
+
+| Key | Type | Default | Notes |
+|---|---:|---:|---|
+| `check_on_startup` | bool | `true` | When `false`, disables the startup update check |
+| `github_repo` | string | `"Steven9101/NovaSDR"` | Repo to check (format: `owner/name`) |
+
+If an update is available, NovaSDR prints a prominent console message with the release URL. Updating is manual:
+- Official release builds: download the newest release binary and replace the installed binary.
+- Source builds: `git pull` then rebuild (`cargo build -p novasdr-server --release` with your usual `--features`).
+
 ### `active_receiver_id`
 
 | Key | Type | Default | Notes |

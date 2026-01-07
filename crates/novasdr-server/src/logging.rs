@@ -102,37 +102,71 @@ where
         event: &tracing::Event<'_>,
         _ctx: tracing_subscriber::layer::Context<'_, S>,
     ) {
-        if event.metadata().target() != "novasdr_banner" {
-            return;
-        }
+        match event.metadata().target() {
+            "novasdr_banner" => {
+                let mut v = BannerVisitor {
+                    version: None,
+                    os: None,
+                    arch: None,
+                    timestamp: None,
+                    build: None,
+                };
+                event.record(&mut v);
+                let version = v.version.as_deref().unwrap_or("unknown");
+                let os = v.os.as_deref().unwrap_or(std::env::consts::OS);
+                let arch = v.arch.as_deref().unwrap_or(std::env::consts::ARCH);
+                let timestamp = v.timestamp.as_deref().unwrap_or("unknown timestamp");
+                let build = v.build.as_deref().unwrap_or("");
 
-        let mut v = BannerVisitor {
-            version: None,
-            os: None,
-            arch: None,
-            timestamp: None,
-            build: None,
-        };
-        event.record(&mut v);
-        let version = v.version.as_deref().unwrap_or("unknown");
-        let os = v.os.as_deref().unwrap_or(std::env::consts::OS);
-        let arch = v.arch.as_deref().unwrap_or(std::env::consts::ARCH);
-        let timestamp = v.timestamp.as_deref().unwrap_or("unknown timestamp");
-        let build = v.build.as_deref().unwrap_or("");
+                let mut line = format!("NovaSDR v{version} ({os}/{arch}) {timestamp}");
+                let build = build.trim();
+                if !build.is_empty() {
+                    line.push_str(" build=");
+                    line.push_str(build);
+                }
+                line.push('\n');
+                write_stderr(line.as_bytes());
+            }
+            "novasdr_notice" => {
+                let mut v = NoticeVisitor {
+                    current: None,
+                    latest: None,
+                    url: None,
+                };
+                event.record(&mut v);
+                let current = v.current.as_deref().unwrap_or("unknown");
+                let latest = v.latest.as_deref().unwrap_or("unknown");
+                let url = v.url.as_deref().unwrap_or("");
 
-        let mut line = format!("NovaSDR v{version} ({os}/{arch}) {timestamp}");
-        let build = build.trim();
-        if !build.is_empty() {
-            line.push_str(" build=");
-            line.push_str(build);
+                let mut out = String::new();
+                out.push('\n');
+                out.push_str("========================================\n");
+                out.push_str("UPDATE AVAILABLE\n");
+                out.push_str("========================================\n");
+                out.push_str(&format!("Installed: v{current}\n"));
+                out.push_str(&format!("Latest:    v{latest}\n"));
+                if !url.trim().is_empty() {
+                    out.push_str(&format!("Release:   {url}\n"));
+                }
+                out.push_str("\n");
+                out.push_str("This build will not auto-update for safety.\n");
+                out.push_str("Download the official release and replace the binary.\n");
+                out.push_str("If you built from source: git pull && cargo build -p novasdr-server --release\n");
+                out.push_str("To disable this message: set updates.check_on_startup=false\n");
+                out.push_str("========================================\n\n");
+                write_stderr(out.as_bytes());
+            }
+            _ => {}
         }
-        line.push('\n');
-        let mut stderr = std::io::stderr().lock();
-        if std::io::Write::flush(&mut stderr).is_err() {
-            return;
-        }
-        if std::io::Write::write_all(&mut stderr, line.as_bytes()).is_err() {}
     }
+}
+
+fn write_stderr(bytes: &[u8]) {
+    let mut stderr = std::io::stderr().lock();
+    if std::io::Write::flush(&mut stderr).is_err() {
+        return;
+    }
+    let _ = std::io::Write::write_all(&mut stderr, bytes);
 }
 
 struct BannerVisitor {
@@ -163,6 +197,33 @@ impl Visit for BannerVisitor {
             "arch" if self.arch.is_none() => self.arch = Some(s),
             "timestamp" if self.timestamp.is_none() => self.timestamp = Some(s),
             "build" if self.build.is_none() => self.build = Some(s),
+            _ => {}
+        }
+    }
+}
+
+struct NoticeVisitor {
+    current: Option<String>,
+    latest: Option<String>,
+    url: Option<String>,
+}
+
+impl Visit for NoticeVisitor {
+    fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
+        match field.name() {
+            "current" => self.current = Some(value.to_string()),
+            "latest" => self.latest = Some(value.to_string()),
+            "url" => self.url = Some(value.to_string()),
+            _ => {}
+        }
+    }
+
+    fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
+        let s = format!("{value:?}");
+        match field.name() {
+            "current" if self.current.is_none() => self.current = Some(s),
+            "latest" if self.latest.is_none() => self.latest = Some(s),
+            "url" if self.url.is_none() => self.url = Some(s),
             _ => {}
         }
     }

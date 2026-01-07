@@ -1,5 +1,6 @@
 mod app;
 mod banner;
+mod build_info;
 mod cli;
 mod dsp_runner;
 mod input;
@@ -9,6 +10,7 @@ mod registration;
 mod setup;
 mod shutdown;
 mod state;
+mod update_check;
 mod ws;
 
 use anyhow::Context;
@@ -300,6 +302,7 @@ fn main() -> anyhow::Result<()> {
             state::spawn_marker_watcher(state.clone(), overlays.dir.clone());
             state::spawn_bands_watcher(state.clone(), overlays.dir);
             registration::spawn(state.clone());
+            update_check::spawn(state.clone());
             dsp_runner::start(state.clone()).context("start DSP runner")?;
 
             app::serve(state).await

@@ -9,6 +9,7 @@ fn websdr_register_url_default_is_present() {
         server: novasdr_core::config::Server::default(),
         websdr,
         limits: novasdr_core::config::Limits::default(),
+        updates: novasdr_core::config::Updates::default(),
         receivers: vec![novasdr_core::config::ReceiverConfig {
             id: "rx0".to_string(),
             name: "rx0".to_string(),

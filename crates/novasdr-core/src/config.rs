@@ -10,8 +10,17 @@ pub struct Config {
     pub server: Server,
     pub websdr: WebSdr,
     pub limits: Limits,
+    pub updates: Updates,
     pub receivers: Vec<ReceiverConfig>,
     pub active_receiver_id: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Updates {
+    #[serde(default = "default_updates_check_on_startup")]
+    pub check_on_startup: bool,
+    #[serde(default = "default_updates_github_repo")]
+    pub github_repo: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -238,6 +247,14 @@ fn default_limit() -> usize {
 fn default_ws_per_ip() -> usize {
     50
 }
+
+fn default_updates_check_on_startup() -> bool {
+    true
+}
+
+fn default_updates_github_repo() -> String {
+    "Steven9101/NovaSDR".to_string()
+}
 fn default_fft_size() -> usize {
     131_072
 }
@@ -300,6 +317,15 @@ impl Default for Limits {
     }
 }
 
+impl Default for Updates {
+    fn default() -> Self {
+        Self {
+            check_on_startup: default_updates_check_on_startup(),
+            github_repo: default_updates_github_repo(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct GlobalConfigFile {
     #[serde(default)]
@@ -308,6 +334,8 @@ struct GlobalConfigFile {
     pub websdr: WebSdr,
     #[serde(default)]
     pub limits: Limits,
+    #[serde(default)]
+    pub updates: Updates,
     #[serde(default)]
     pub active_receiver_id: Option<String>,
 }
@@ -369,6 +397,7 @@ pub fn load_from_files(config_json: &Path, receivers_json: &Path) -> anyhow::Res
         server: global.server,
         websdr: global.websdr,
         limits: global.limits,
+        updates: global.updates,
         receivers: receivers.receivers,
         active_receiver_id: active_id,
     })

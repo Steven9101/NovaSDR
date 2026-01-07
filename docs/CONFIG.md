@@ -43,6 +43,7 @@ The registration payload includes server name, antenna, grid locator, hostname, 
   "server": { "host": "[::]", "port": 9002, "html_root": "frontend/dist/", "otherusers": 1, "threads": 0 },
   "websdr": { "name": "NovaSDR", "operator": "operator", "email": "operator@example.com", "grid_locator": "-", "chat_enabled": true },
   "limits": { "audio": 1000, "waterfall": 1000, "events": 1000, "ws_per_ip": 50 },
+  "updates": { "check_on_startup": true, "github_repo": "Steven9101/NovaSDR" },
   "active_receiver_id": "rx0"
 }
 ```

@@ -1,6 +1,6 @@
 use novasdr_core::config::{
     Accelerator, AudioCompression, Config, InputDriver, Limits, ReceiverConfig, ReceiverDefaults,
-    ReceiverInput, SampleFormat, Server, SignalType, WaterfallCompression, WebSdr,
+    ReceiverInput, SampleFormat, Server, SignalType, Updates, WaterfallCompression, WebSdr,
 };
 
 #[test]
@@ -36,6 +36,7 @@ fn runtime_defaults_use_configured_modulation() {
         server: Server::default(),
         websdr: WebSdr::default(),
         limits: Limits::default(),
+        updates: Updates::default(),
         receivers: vec![receiver],
         active_receiver_id: "rx0".to_string(),
     };
@@ -84,6 +85,7 @@ fn runtime_defaults_respect_configured_ssb_passband() {
         server: Server::default(),
         websdr: WebSdr::default(),
         limits: Limits::default(),
+        updates: Updates::default(),
         receivers: vec![receiver],
         active_receiver_id: "rx0".to_string(),
     };

@@ -1,8 +1,9 @@
 [package]
 name = "novasdr-server"
-version = "0.2.6"
+version = "0.2.7"
 edition = "2021"
 license = "GPL-3.0-only"
+build = "build.rs"
 
 [dependencies]
 anyhow = "1.0.95"

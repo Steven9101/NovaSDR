@@ -1,6 +1,6 @@
 use novasdr_core::config::{
     AudioCompression, Config, InputDriver, Limits, ReceiverConfig, ReceiverDefaults, ReceiverInput,
-    SampleFormat, Server, SignalType, WaterfallCompression, WebSdr,
+    SampleFormat, Server, SignalType, Updates, WaterfallCompression, WebSdr,
 };
 
 fn base_config(signal: SignalType) -> Config {
@@ -35,6 +35,7 @@ fn base_config(signal: SignalType) -> Config {
         server: Server::default(),
         websdr: WebSdr::default(),
         limits: Limits::default(),
+        updates: Updates::default(),
         receivers: vec![receiver],
         active_receiver_id: "rx0".to_string(),
     }
