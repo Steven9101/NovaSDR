@@ -148,7 +148,7 @@ where
                 if !url.trim().is_empty() {
                     out.push_str(&format!("Release:   {url}\n"));
                 }
-                out.push_str("\n");
+                out.push('\n');
                 out.push_str("This build will not auto-update for safety.\n");
                 out.push_str("Download the official release and replace the binary.\n");
                 out.push_str("If you built from source: git pull && cargo build -p novasdr-server --release\n");
