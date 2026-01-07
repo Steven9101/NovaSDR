@@ -53,6 +53,7 @@ hackrf_transfer -r - -f 100900000 -s 8000000 | ./target/release/novasdr-server -
 - How the backend is structured: [Architecture](ARCHITECTURE.md)
 - Signal processing details: [DSP](DSP.md), [Audio](AUDIO.md), [Waterfall](WATERFALL.md)
 - Deployment guidance: [Operations](OPERATIONS.md)
+- Release notes: [Changelog](CHANGELOG.md)
 - Known issues and fixes: [Troubleshooting](TROUBLESHOOTING.md)
 - Licensing and attribution: [Licensing](LICENSING.md), [Third-party](THIRD_PARTY.md)
 - Contributing (fork-first): [Contributing](CONTRIBUTING.md)

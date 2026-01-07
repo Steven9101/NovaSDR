@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn compare_versions_orders_semver_triplets() {
         assert_eq!(compare_versions("0.2.6", "0.2.6"), Some(Ordering::Equal));
-        assert_eq!(compare_versions("0.2.6", "0.2.7"), Some(Ordering::Less));
+        assert_eq!(compare_versions("0.2.7", "0.2.8"), Some(Ordering::Less));
         assert_eq!(compare_versions("0.2.10", "0.2.9"), Some(Ordering::Greater));
         assert_eq!(compare_versions("1.0.0", "0.9.9"), Some(Ordering::Greater));
     }
@@ -104,7 +104,7 @@ mod tests {
     #[test]
     fn compare_versions_accepts_suffix_after_patch() {
         assert_eq!(
-            compare_versions("0.2.6", "0.2.7-beta1"),
+            compare_versions("0.2.7", "0.2.8-beta1"),
             Some(Ordering::Less)
         );
     }
