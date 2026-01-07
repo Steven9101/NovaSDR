@@ -81,7 +81,10 @@ fn parse_version(s: &str) -> Option<(u64, u64, u64)> {
     let major = it.next()?.parse().ok()?;
     let minor = it.next()?.parse().ok()?;
     let patch_raw = it.next()?;
-    let patch_digits: String = patch_raw.chars().take_while(|c| c.is_ascii_digit()).collect();
+    let patch_digits: String = patch_raw
+        .chars()
+        .take_while(|c| c.is_ascii_digit())
+        .collect();
     let patch = patch_digits.parse().ok()?;
     Some((major, minor, patch))
 }
@@ -92,15 +95,9 @@ mod tests {
 
     #[test]
     fn compare_versions_orders_semver_triplets() {
-        assert_eq!(
-            compare_versions("0.2.6", "0.2.6"),
-            Some(Ordering::Equal)
-        );
+        assert_eq!(compare_versions("0.2.6", "0.2.6"), Some(Ordering::Equal));
         assert_eq!(compare_versions("0.2.6", "0.2.7"), Some(Ordering::Less));
-        assert_eq!(
-            compare_versions("0.2.10", "0.2.9"),
-            Some(Ordering::Greater)
-        );
+        assert_eq!(compare_versions("0.2.10", "0.2.9"), Some(Ordering::Greater));
         assert_eq!(compare_versions("1.0.0", "0.9.9"), Some(Ordering::Greater));
     }
 

@@ -39,4 +39,3 @@ pub fn git_dirty() -> Option<bool> {
         _ => None,
     })
 }
-

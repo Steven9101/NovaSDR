@@ -49,7 +49,11 @@ fn main() {
     println!("cargo:rustc-env=NOVASDR_GIT_DIRTY={git_dirty}");
 
     if std::env::var_os("NOVASDR_BUILD_SOURCE").is_none() {
-        let inferred = if git_commit.is_some() { "git" } else { "unknown" };
+        let inferred = if git_commit.is_some() {
+            "git"
+        } else {
+            "unknown"
+        };
         println!("cargo:rustc-env=NOVASDR_BUILD_SOURCE={inferred}");
     }
 }
@@ -62,4 +66,3 @@ fn run_git<const N: usize>(args: [&str; N]) -> Option<String> {
     let s = String::from_utf8(out.stdout).ok()?;
     Some(s.trim().to_string())
 }
-
