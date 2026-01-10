@@ -19,6 +19,11 @@ use std::io::IsTerminal;
 use std::path::Path;
 use std::sync::Arc;
 
+fn install_rustls_crypto_provider() {
+   // aws-lc-rs Provider (kommt über axum-server tls-rustls)
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+}
+
 fn receivers_file_has_receivers(path: &Path) -> bool {
     let Ok(raw) = std::fs::read_to_string(path) else {
         return true;
@@ -71,6 +76,8 @@ fn main() -> anyhow::Result<()> {
     use clap::parser::ValueSource;
     use clap::{CommandFactory, FromArgMatches};
     use std::path::PathBuf;
+
+    install_rustls_crypto_provider();
 
     let cmd = cli::Args::command();
     let matches = cmd.get_matches();
