@@ -1,10 +1,15 @@
 {
   "server": {
-    "port": 9002,
     "host": "[::]",
     "html_root": "frontend/dist/",
     "otherusers": 1,
-    "threads": 0
+    "http_port": 80,
+    "https_port": 443,
+    "threads": 2,
+    "tls": {
+      "cert_pem_path": "./certs/fullchain.pem",
+      "key_pem_path": "./certs/privkey.pem"
+    }
   },
   "websdr": {
     "register_online": false,
