@@ -27,6 +27,10 @@ pub struct Updates {
 pub struct Server {
     #[serde(default = "default_port")]
     pub port: u16,
+    #[serde(default = "default_http_port")]
+    pub http_port: u16,
+    #[serde(default = "default_https_port")]
+    pub https_port: u16,
     #[serde(default = "default_host")]
     pub host: String,
     #[serde(default = "default_html_root")]
@@ -35,6 +39,8 @@ pub struct Server {
     pub otherusers: i64,
     #[serde(default = "default_threads")]
     pub threads: usize,
+    #[serde(default)]
+    pub tls: Option<Tls>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -214,6 +220,14 @@ pub enum SampleFormat {
 fn default_port() -> u16 {
     9002
 }
+
+fn default_http_port() -> u16 {
+    80
+}
+fn default_https_port() -> u16 {
+    443
+}
+
 fn default_host() -> String {
     "[::]".to_string()
 }
