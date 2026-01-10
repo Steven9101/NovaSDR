@@ -20,6 +20,9 @@ struct SdrListUpdate<'a> {
     hostname: &'a str,
     max_users: usize,
     port: u16,
+    http_port: u16,
+    https_port: u16,
+
 }
 
 pub fn spawn(state: Arc<AppState>) {
@@ -92,6 +95,9 @@ fn build_payload<'a>(state: &'a AppState, id: &'a str) -> SdrListUpdate<'a> {
         hostname: cfg.websdr.hostname.as_str(),
         max_users: cfg.limits.audio,
         port: cfg.server.port,
+        http_port: cfg.server.http_port,
+        https_port: cfg.server.https_port,
+
     }
 }
 
