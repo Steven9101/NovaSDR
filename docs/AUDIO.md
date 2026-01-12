@@ -12,8 +12,8 @@ graph LR
   D --> E[DC removal]
   E --> F[AGC]
   F --> G[Quantize i16]
-  G --> H[FLAC encode 16 bit]
-  H --> I[CBOR packet]
+  G --> H[IMA ADPCM encode]
+  H --> I[Binary frame header]
   I --> J[audio websocket frames]
 ```
 
@@ -55,36 +55,14 @@ Decision logic (fixed constants):
 - When open, close only after `scaled < 2` for 10 consecutive frames (hysteresis).
 
 When squelch is enabled and closed, the server does not emit audio packets.
+
 ## Output format (frontend contract)
 
-The frontend uses a persistent decoder instance and expects to receive chunks of a FLAC stream.
+The frontend expects framed binary packets containing IMA ADPCM payloads.
 
-Each WebSocket binary frame is CBOR encoding of:
+The backend batches roughly 20ms of PCM per WebSocket frame to reduce packet rate and browser-side scheduling overhead.
 
-```text
-{
-  frame_num: u64,
-  l: i32,
-  m: f64,
-  r: i32,
-  pwr: f32,
-  data: bytes (FLAC stream bytes)
-}
-```
-
-See: `crates/novasdr-core/src/protocol.rs` (`AudioPacket`)
-
-## 16-bit FLAC
-
-For bandwidth and compatibility with the existing frontend decoder, the backend produces 16‑bit mono FLAC.
-
-- DSP produces `f32` audio samples.
-- Samples are quantized to signed 16-bit centered PCM.
-- The FLAC encoder is configured for `bits_per_sample = 16`.
-
-Implementation:
-- Quantizer: `crates/novasdr-core/src/dsp/demod.rs`
-- Pipeline: `crates/novasdr-server/src/ws/audio.rs`
+See: `docs/PROTOCOL.md`.
 
 ## Window sizing and `audio_max_fft_size`
 

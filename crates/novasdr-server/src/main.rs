@@ -167,7 +167,18 @@ fn main() -> anyhow::Result<()> {
     }
 
     let cfg = match config::load_from_files(&config_path, &receivers_path) {
-        Ok(cfg) => Arc::new(cfg),
+        Ok(mut cfg) => {
+            for r in cfg.receivers.iter_mut() {
+                if r.input.audio_compression == config::AudioCompression::Flac {
+                    tracing::warn!(
+                        receiver_id = %r.id,
+                        "audio_compression = \"flac\" was removed; treating it as \"adpcm\""
+                    );
+                    r.input.audio_compression = config::AudioCompression::Adpcm;
+                }
+            }
+            Arc::new(cfg)
+        }
         Err(e) => {
             let interactive = std::io::stdin().is_terminal();
             if interactive && setup::ask_to_run_setup_for_invalid_config(&args, &e)? {
@@ -216,12 +227,6 @@ fn main() -> anyhow::Result<()> {
         if r.input.waterfall_compression != config::WaterfallCompression::Zstd {
             anyhow::bail!(
                 "receiver {}: only waterfall_compression = \"zstd\" is supported",
-                r.id
-            );
-        }
-        if r.input.audio_compression != config::AudioCompression::Flac {
-            anyhow::bail!(
-                "receiver {}: only audio_compression = \"flac\" is supported",
                 r.id
             );
         }

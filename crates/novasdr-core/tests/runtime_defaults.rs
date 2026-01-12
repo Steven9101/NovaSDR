@@ -17,7 +17,7 @@ fn runtime_defaults_use_configured_modulation() {
             audio_sps: 12_000,
             waterfall_size: 1024,
             waterfall_compression: WaterfallCompression::Zstd,
-            audio_compression: AudioCompression::Flac,
+            audio_compression: AudioCompression::Adpcm,
             smeter_offset: 0,
             accelerator: Accelerator::Clfft,
             driver: InputDriver::Stdin {
@@ -66,7 +66,7 @@ fn runtime_defaults_respect_configured_ssb_passband() {
             audio_sps: 48_000,
             waterfall_size: 1024,
             waterfall_compression: WaterfallCompression::Zstd,
-            audio_compression: AudioCompression::Flac,
+            audio_compression: AudioCompression::Adpcm,
             smeter_offset: 0,
             accelerator: Accelerator::None,
             driver: InputDriver::Stdin {

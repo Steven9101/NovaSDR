@@ -20,7 +20,7 @@ You can edit/reset these overlays from the setup wizard (`setup` / `configure`),
 
 The Rust backend supports:
 - `receivers[].input.waterfall_compression = "zstd"`
-- `receivers[].input.audio_compression = "flac"`
+- `receivers[].input.audio_compression = "adpcm"`
 - `receivers[].input.accelerator = "none"` (or `clfft` with the `clfft` feature; or `vkfft` with the `vkfft` feature)
 
 ## Online listing registration
@@ -64,7 +64,7 @@ The registration payload includes server name, antenna, grid locator, hostname, 
         "audio_sps": 12000,
         "waterfall_size": 1024,
         "waterfall_compression": "zstd",
-        "audio_compression": "flac",
+        "audio_compression": "adpcm",
         "accelerator": "none",
         "smeter_offset": 0,
         "driver": { "kind": "stdin", "format": "u8" },

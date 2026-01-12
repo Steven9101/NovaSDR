@@ -22,7 +22,7 @@ fn websdr_register_url_default_is_present() {
                 audio_sps: 12_000,
                 waterfall_size: 1024,
                 waterfall_compression: novasdr_core::config::WaterfallCompression::Zstd,
-                audio_compression: novasdr_core::config::AudioCompression::Flac,
+                audio_compression: novasdr_core::config::AudioCompression::Adpcm,
                 smeter_offset: 0,
                 accelerator: novasdr_core::config::Accelerator::None,
                 driver: novasdr_core::config::InputDriver::Stdin {

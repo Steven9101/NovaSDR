@@ -94,10 +94,10 @@ Each entry in `receivers[]`:
 | `signal` | `"iq"` \| `"real"` | yes | Determines FFT layout |
 | `fft_size` | int | no | Must be power-of-two for the FFT engine |
 | `brightness_offset` | int | no | Waterfall visual offset |
-| `audio_sps` | int | no | Target audio passband rate; used to derive `audio_max_fft_size` and limits how wide the tuned audio window can be. Must be `<= 48000`. The backend FLAC stream uses this sample rate; the browser resamples for playback and caps output to 48 kHz. |
+| `audio_sps` | int | no | Target audio passband rate; used to derive `audio_max_fft_size` and limits how wide the tuned audio window can be. Must be `<= 48000`. The browser resamples for playback and caps output to 48 kHz. |
 | `waterfall_size` | int | no | Target waterfall width at client; drives downsample level selection |
 | `waterfall_compression` | `"zstd"` | no | Only `zstd` supported |
-| `audio_compression` | `"flac"` | no | Only `flac` supported |
+| `audio_compression` | `"adpcm"` | no | Supported: `adpcm` |
 | `accelerator` | `"none"` \| `"clfft"` \| `"vkfft"` | no | `clfft` requires building with `--features clfft`; `vkfft` requires building with `--features vkfft` |
 | `smeter_offset` | int | no | UI-only offset |
 

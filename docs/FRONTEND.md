@@ -67,13 +67,13 @@ For SSB, the UI may use a one-sided window (USB `+300..+3000 Hz` / LSB `-3000..-
 
 ## Audio decoding
 
-The UI uses the WASM decoder in `frontend/src/modules/phantomsdrdsp_bg.wasm`.
+The UI uses the WASM decoder in `frontend/src/modules/novasdrdsp_bg.wasm`.
 
 Attribution for bundled WebAssembly modules and other third-party components is tracked in `docs/THIRD_PARTY.md`.
 
 Expectations:
-- audio stream bytes are FLAC (mono, 16-bit samples)
-- packets are CBOR maps with a `data` field containing FLAC bytes
+- `/audio` sends framed binary packets (see `docs/PROTOCOL.md`).
+- Default audio codec is IMA ADPCM; the frontend decodes ADPCM to PCM and then runs DSP via `Audio.process_pcm_f32()`.
 
 ### iOS background playback
 

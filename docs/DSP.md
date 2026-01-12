@@ -15,7 +15,7 @@ graph LR
   E --> G[Audio slice per client]
   F --> H[Waterfall slice per client]
   G --> I[Demod AGC quantize]
-  I --> J[FLAC encoder]
+  I --> J[IMA ADPCM encoder]
   J --> K[audio websocket frames]
   H --> L[CBOR packet]
   L --> M[Zstd stream]

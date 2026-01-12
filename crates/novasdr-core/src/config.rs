@@ -184,6 +184,7 @@ pub enum WaterfallCompression {
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum AudioCompression {
+    Adpcm,
     Flac,
 }
 
@@ -268,7 +269,7 @@ fn default_waterfall_compression() -> WaterfallCompression {
     WaterfallCompression::Zstd
 }
 fn default_audio_compression() -> AudioCompression {
-    AudioCompression::Flac
+    AudioCompression::Adpcm
 }
 fn default_default_frequency() -> i64 {
     -1
@@ -576,6 +577,7 @@ impl Config {
             WaterfallCompression::Zstd => "zstd".to_string(),
         };
         let audio_compression_str = match input.audio_compression {
+            AudioCompression::Adpcm => "adpcm".to_string(),
             AudioCompression::Flac => "flac".to_string(),
         };
 

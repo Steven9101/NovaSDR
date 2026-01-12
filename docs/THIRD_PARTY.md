@@ -16,23 +16,24 @@ NovaSDR is a continuation of PhantomSDR-plus (a fork maintained by `magicint1337
 
 The repository includes generated artifacts that are distributed as part of NovaSDR:
 
-### `phantomsdrdsp` WebAssembly modules
+### `novasdrdsp` WebAssembly modules
 
 Files under `frontend/src/modules/`:
 
-- `phantomsdrdsp_bg.wasm`
-- `phantomsdrdsp_bg.js`
-- `phantomsdrdsp_bg_fallback.js`
-- `phantomsdrdsp.js`
-- `phantomsdrdsp.d.ts`
-- `phantomsdrdsp_bg.wasm.d.ts`
+- `novasdrdsp_bg.wasm`
+- `novasdrdsp_bg.js`
+- `novasdrdsp.js`
+- `novasdrdsp.d.ts`
+- `novasdrdsp_bg.wasm.d.ts`
 
 These modules are used by the frontend for:
 
 - audio decoding (`frontend/src/components/audio/useAudioClient.ts`)
 - waterfall stream decoding (`frontend/src/components/waterfall/WaterfallView.tsx`)
 
-Attribution: these modules are derived from upstream work maintained by **@rhgndf** ([GitHub profile](https://github.com/rhgndf)).
+Attribution: these modules are derived from upstream work in `PhantomSDR/decoders` (Apache-2.0): https://github.com/PhantomSDR/decoders
+
+Source repository for the NovaSDR build: https://github.com/Steven9101/novasdr-wasm
 
 ### FT8 decoder (Emscripten output)
 
@@ -69,5 +70,4 @@ For redistributors who need a complete list of transitive licenses, generate and
 
 - Rust (transitive): use a license reporting tool (for example, `cargo-about` or `cargo-deny`) and store the output alongside release artifacts.
 - Frontend (transitive): generate an npm dependency license report from `frontend/package-lock.json`.
-
 

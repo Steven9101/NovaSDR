@@ -7,7 +7,7 @@ use axum::{
 };
 use futures::{SinkExt, StreamExt};
 use novasdr_core::{
-    codec::flac_stream::FlacStreamEncoder,
+    config::AudioCompression,
     dsp::{
         agc::Agc,
         dc_blocker::DcBlocker,
@@ -16,7 +16,6 @@ use novasdr_core::{
             polar_discriminator_fm, sam_demod, DemodulationMode,
         },
     },
-    protocol::AudioPacket,
     util::generate_unique_id,
 };
 use num_complex::Complex32;
@@ -41,10 +40,23 @@ fn with_audio_unique_id(basic_info: String, unique_id: &str) -> String {
     }
 }
 
-fn scaled_relative_variance_power(bins: &[Complex32]) -> f32 {
+#[derive(Clone, Copy, Debug)]
+struct SquelchFeatures {
+    scaled_relative_variance: f32,
+    active_bins: u16,
+    max_active_run: u16,
+    len: usize,
+}
+
+fn squelch_features(bins: &[Complex32]) -> SquelchFeatures {
     let n = bins.len();
     if n < 2 {
-        return 0.0;
+        return SquelchFeatures {
+            scaled_relative_variance: 0.0,
+            active_bins: 0,
+            max_active_run: 0,
+            len: n,
+        };
     }
 
     let mut sum_p = 0.0f64;
@@ -58,7 +70,12 @@ fn scaled_relative_variance_power(bins: &[Complex32]) -> f32 {
     let inv_n = 1.0f64 / (n as f64);
     let mean = sum_p * inv_n;
     if mean <= 0.0 {
-        return 0.0;
+        return SquelchFeatures {
+            scaled_relative_variance: 0.0,
+            active_bins: 0,
+            max_active_run: 0,
+            len: n,
+        };
     }
 
     // var = E[p^2] - (E[p])^2
@@ -68,7 +85,155 @@ fn scaled_relative_variance_power(bins: &[Complex32]) -> f32 {
     }
 
     let rv = var / (mean * mean);
-    ((rv - 1.0) * (n as f64).sqrt()) as f32
+    let scaled_relative_variance = ((rv - 1.0) * (n as f64).sqrt()) as f32;
+
+    let active_threshold = mean * 2.0;
+    let mut active_bins: u16 = 0;
+    let mut max_active_run: u16 = 0;
+    let mut active_run: u16 = 0;
+    for c in bins {
+        let p = c.norm_sqr() as f64;
+        if p.is_finite() && p >= active_threshold {
+            active_bins = active_bins.saturating_add(1);
+            active_run = active_run.saturating_add(1);
+            if active_run > max_active_run {
+                max_active_run = active_run;
+            }
+        } else {
+            active_run = 0;
+        }
+    }
+
+    SquelchFeatures {
+        scaled_relative_variance,
+        active_bins,
+        max_active_run,
+        len: n,
+    }
+}
+
+const AUDIO_FRAME_MAGIC: [u8; 4] = *b"NSDA";
+const AUDIO_FRAME_VERSION: u8 = 1;
+const AUDIO_FRAME_HEADER_LEN: usize = 36;
+
+#[derive(Clone, Copy, Debug)]
+#[repr(u8)]
+enum AudioWireCodec {
+    AdpcmIma = 1,
+}
+
+fn build_audio_frame(
+    codec: AudioWireCodec,
+    frame_num: u64,
+    l: i32,
+    m: f64,
+    r: i32,
+    pwr: f32,
+    payload: &[u8],
+) -> Vec<u8> {
+    let mut out = Vec::with_capacity(AUDIO_FRAME_HEADER_LEN + payload.len());
+    out.extend_from_slice(&AUDIO_FRAME_MAGIC);
+    out.push(AUDIO_FRAME_VERSION);
+    out.push(codec as u8);
+    out.extend_from_slice(&0u16.to_le_bytes());
+    out.extend_from_slice(&frame_num.to_le_bytes());
+    out.extend_from_slice(&l.to_le_bytes());
+    out.extend_from_slice(&m.to_le_bytes());
+    out.extend_from_slice(&r.to_le_bytes());
+    out.extend_from_slice(&pwr.to_le_bytes());
+    out.extend_from_slice(payload);
+    out
+}
+
+mod ima_adpcm {
+    const INDEX_TABLE: [i32; 16] = [-1, -1, -1, -1, 2, 4, 6, 8, -1, -1, -1, -1, 2, 4, 6, 8];
+
+    const STEP_TABLE: [i32; 89] = [
+        7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31, 34, 37, 41, 45, 50, 55, 60,
+        66, 73, 80, 88, 97, 107, 118, 130, 143, 157, 173, 190, 209, 230, 253, 279, 307, 337, 371,
+        408, 449, 494, 544, 598, 658, 724, 796, 876, 963, 1060, 1166, 1282, 1411, 1552, 1707, 1878,
+        2066, 2272, 2499, 2749, 3024, 3327, 3660, 4026, 4428, 4871, 5358, 5894, 6484, 7132, 7845,
+        8630, 9493, 10442, 11487, 12635, 13899, 15289, 16818, 18500, 20350, 22385, 24623, 27086,
+        29794, 32767,
+    ];
+
+    pub fn encode_block_i16_mono(samples: &[i16]) -> Vec<u8> {
+        if samples.is_empty() {
+            return Vec::new();
+        }
+
+        let mut predictor = samples[0] as i32;
+        let mut index = if samples.len() >= 2 {
+            let diff = (samples[1] as i32 - samples[0] as i32).abs();
+            let mut best = 0usize;
+            for (i, &step) in STEP_TABLE.iter().enumerate() {
+                if step >= diff {
+                    best = i;
+                    break;
+                }
+                best = i;
+            }
+            best as i32
+        } else {
+            0i32
+        };
+
+        let codes = samples.len().saturating_sub(1);
+        let mut out = Vec::with_capacity(6 + (codes + 1) / 2);
+        out.extend_from_slice(&(samples[0]).to_le_bytes());
+        out.push(index as u8);
+        out.push(0);
+        out.extend_from_slice(&(samples.len() as u16).to_le_bytes());
+
+        let mut pending: Option<u8> = None;
+
+        for &sample in &samples[1..] {
+            let step = STEP_TABLE[index as usize];
+            let diff = (sample as i32) - predictor;
+            let sign = if diff < 0 { 8 } else { 0 };
+            let mut delta = diff.abs();
+
+            let mut code = 0i32;
+            let mut vpdiff = step >> 3;
+            if delta >= step {
+                code |= 4;
+                delta -= step;
+                vpdiff += step;
+            }
+            if delta >= (step >> 1) {
+                code |= 2;
+                delta -= step >> 1;
+                vpdiff += step >> 1;
+            }
+            if delta >= (step >> 2) {
+                code |= 1;
+                vpdiff += step >> 2;
+            }
+
+            if sign != 0 {
+                predictor -= vpdiff;
+            } else {
+                predictor += vpdiff;
+            }
+            predictor = predictor.clamp(i16::MIN as i32, i16::MAX as i32);
+
+            code |= sign;
+            index += INDEX_TABLE[code as usize];
+            index = index.clamp(0, (STEP_TABLE.len() - 1) as i32);
+
+            let nibble = (code as u8) & 0x0f;
+            match pending.take() {
+                Some(low) => out.push(low | (nibble << 4)),
+                None => pending = Some(nibble),
+            }
+        }
+
+        if let Some(low) = pending {
+            out.push(low);
+        }
+
+        out
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -101,7 +266,7 @@ impl SquelchState {
         self.close_hits = 0;
     }
 
-    fn update(&mut self, enabled: bool, scaled_relative_variance: f32) -> bool {
+    fn update(&mut self, enabled: bool, features: SquelchFeatures) -> bool {
         if enabled && !self.was_enabled {
             self.reset_closed();
         }
@@ -113,8 +278,15 @@ impl SquelchState {
             return true;
         }
 
-        let open_now = scaled_relative_variance >= 18.0;
-        let open_soft = scaled_relative_variance >= 5.0;
+        let min_active_bins = if features.len <= 256 {
+            1u16
+        } else {
+            ((features.len / 512).clamp(2, 6)) as u16
+        };
+        let active_enough = features.active_bins >= min_active_bins;
+
+        let open_now = features.scaled_relative_variance >= 18.0 && active_enough;
+        let open_soft = features.scaled_relative_variance >= 5.0 && active_enough;
 
         if open_now {
             self.open = true;
@@ -137,8 +309,17 @@ impl SquelchState {
             return self.open;
         }
 
-        // Close hysteresis: require sustained low variation before closing.
-        if scaled_relative_variance < 2.0 {
+        // Close hysteresis: require sustained low variation before closing. Also close if the
+        // slice is dominated by too few bins (narrow spurs/tones), or if activity is too sparse
+        // (typical "static" with no concentrated signal energy).
+        let min_active_run = if features.len <= 128 {
+            1u16
+        } else {
+            ((features.len / 256).clamp(2, 8)) as u16
+        };
+        let run_enough = features.max_active_run >= min_active_run;
+
+        if features.scaled_relative_variance < 2.0 || !active_enough || !run_enough {
             self.close_hits = self.close_hits.saturating_add(1);
         } else {
             self.close_hits = 0;
@@ -169,10 +350,7 @@ pub async fn upgrade(
 }
 
 enum AudioOutbound {
-    Switch {
-        settings_json: String,
-        header_pkt: Vec<u8>,
-    },
+    Switch { settings_json: String },
 }
 
 async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::state::WsIpGuard) {
@@ -184,7 +362,8 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
 
     let audio_fft_size = receiver.rt.audio_max_fft_size;
     let sample_rate = receiver.rt.audio_max_sps as usize;
-    let pipeline = match AudioPipeline::new(sample_rate, audio_fft_size) {
+    let compression = receiver.receiver.input.audio_compression;
+    let pipeline = match AudioPipeline::new(sample_rate, audio_fft_size, compression) {
         Ok(p) => p,
         Err(e) => {
             tracing::warn!(
@@ -194,27 +373,6 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
                 audio_fft_size,
                 error = ?e,
                 "audio pipeline init failed"
-            );
-            return;
-        }
-    };
-    let header_pkt = match pipeline.flac.header_bytes().ok().and_then(|header| {
-        let pkt = AudioPacket {
-            frame_num: 0,
-            l: 0,
-            m: 0.0,
-            r: 0,
-            pwr: 0.0,
-            data: &header,
-        };
-        serde_cbor::to_vec(&pkt).ok()
-    }) {
-        Some(v) => v,
-        None => {
-            tracing::warn!(
-                client_id,
-                receiver_id = %receiver_id,
-                "failed to build audio FLAC header packet"
             );
             return;
         }
@@ -250,12 +408,9 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
                 biased;
                 Some(cmd) = out_rx.recv() => {
                     match cmd {
-                        AudioOutbound::Switch { settings_json, header_pkt } => {
+                        AudioOutbound::Switch { settings_json } => {
                             while audio_rx.try_recv().is_ok() {}
                             if ws_sender.send(ws::Message::Text(settings_json)).await.is_err() {
-                                break;
-                            }
-                            if ws_sender.send(ws::Message::Binary(header_pkt)).await.is_err() {
                                 break;
                             }
                         }
@@ -278,7 +433,6 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
     if out_tx
         .send(AudioOutbound::Switch {
             settings_json: basic_info,
-            header_pkt,
         })
         .await
         .is_err()
@@ -320,26 +474,6 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
                                 state.basic_info_json(receiver_id.as_str()).await,
                                 &unique_id,
                             );
-                            let header_pkt = match client
-                                .pipeline
-                                .lock()
-                                .ok()
-                                .and_then(|p| p.flac.header_bytes().ok())
-                                .and_then(|header| {
-                                    let pkt = AudioPacket {
-                                        frame_num: 0,
-                                        l: 0,
-                                        m: 0.0,
-                                        r: 0,
-                                        pwr: 0.0,
-                                        data: &header,
-                                    };
-                                    serde_cbor::to_vec(&pkt).ok()
-                                }) {
-                                Some(v) => v,
-                                None => continue,
-                            };
-
                             if let Ok(mut p) = client.params.lock() {
                                 p.l = receiver.rt.default_l;
                                 p.m = receiver.rt.default_m;
@@ -364,10 +498,7 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
                             );
 
                             if out_tx
-                                .send(AudioOutbound::Switch {
-                                    settings_json,
-                                    header_pkt,
-                                })
+                                .send(AudioOutbound::Switch { settings_json })
                                 .await
                                 .is_err()
                             {
@@ -382,9 +513,11 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
 
                         let next_audio_fft_size = next_receiver.rt.audio_max_fft_size;
                         let next_sample_rate = next_receiver.rt.audio_max_sps as usize;
+                        let next_compression = next_receiver.receiver.input.audio_compression;
                         let next_pipeline = match AudioPipeline::new(
                             next_sample_rate,
                             next_audio_fft_size,
+                            next_compression,
                         ) {
                             Ok(p) => p,
                             Err(e) => {
@@ -392,22 +525,6 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
                                 continue;
                             }
                         };
-                        let next_header_pkt =
-                            match next_pipeline.flac.header_bytes().ok().and_then(|header| {
-                                let pkt = AudioPacket {
-                                    frame_num: 0,
-                                    l: 0,
-                                    m: 0.0,
-                                    r: 0,
-                                    pwr: 0.0,
-                                    data: &header,
-                                };
-                                serde_cbor::to_vec(&pkt).ok()
-                            }) {
-                                Some(v) => v,
-                                None => continue,
-                            };
-
                         let next_basic_info = with_audio_unique_id(
                             state.basic_info_json(next_id.as_str()).await,
                             &unique_id,
@@ -472,7 +589,6 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
                         if out_tx
                             .send(AudioOutbound::Switch {
                                 settings_json: next_basic_info,
-                                header_pkt: next_header_pkt,
                             })
                             .await
                             .is_err()
@@ -612,15 +728,24 @@ fn apply_command(
 mod tests {
     use super::*;
 
+    fn features_for_test(scaled_relative_variance: f32) -> SquelchFeatures {
+        SquelchFeatures {
+            scaled_relative_variance,
+            active_bins: 64,
+            max_active_run: 32,
+            len: 1024,
+        }
+    }
+
     #[test]
     fn scaled_relative_variance_power_is_zero_for_empty_or_dc() {
-        assert_eq!(scaled_relative_variance_power(&[]), 0.0);
+        assert_eq!(squelch_features(&[]).scaled_relative_variance, 0.0);
         assert_eq!(
-            scaled_relative_variance_power(&[Complex32::new(1.0, 0.0)]),
+            squelch_features(&[Complex32::new(1.0, 0.0)]).scaled_relative_variance,
             0.0
         );
         let bins = vec![Complex32::new(2.0, 0.0); 128];
-        let scaled = scaled_relative_variance_power(&bins);
+        let scaled = squelch_features(&bins).scaled_relative_variance;
         let expected = -((bins.len() as f32).sqrt());
         assert!(
             (scaled - expected).abs() < 1e-3,
@@ -632,22 +757,25 @@ mod tests {
     fn squelch_disabled_is_always_open() {
         let mut s = SquelchState::new();
         for v in [0.0, 1.0, 10.0, 100.0] {
-            assert!(s.update(false, v));
+            assert!(s.update(false, features_for_test(v)));
         }
     }
 
     #[test]
     fn squelch_closes_after_sustained_low_variation() {
         let mut s = SquelchState::new();
-        assert!(s.update(true, 20.0), "strong variation should open squelch");
+        assert!(
+            s.update(true, features_for_test(20.0)),
+            "strong variation should open squelch"
+        );
         for _ in 0..9 {
             assert!(
-                s.update(true, 0.0),
+                s.update(true, features_for_test(0.0)),
                 "should remain open until close hysteresis triggers"
             );
         }
         assert!(
-            !s.update(true, 0.0),
+            !s.update(true, features_for_test(0.0)),
             "should close after sustained low variance"
         );
     }
@@ -655,12 +783,13 @@ mod tests {
     #[test]
     fn squelch_opens_immediately_on_strong_variation() {
         let mut s = SquelchState::new();
-        assert!(!s.update(true, 0.0));
-        assert!(s.update(true, 100.0));
+        assert!(!s.update(true, features_for_test(0.0)));
+        assert!(s.update(true, features_for_test(100.0)));
     }
 }
 
 pub struct AudioPipeline {
+    compression: AudioCompression,
     audio_rate: usize,
     audio_fft_size: usize,
     ifft: Arc<dyn RustFft<f32>>,
@@ -674,23 +803,25 @@ pub struct AudioPipeline {
     carrier_prev: Vec<Complex32>,
     real: Vec<f32>,
     real_prev: Vec<f32>,
-    pcm_frame_i32: Vec<i32>,
     pcm_frame_i16: Vec<i16>,
-    pcm_accum: Vec<i32>,
+    pcm_accum_i16: Vec<i16>,
     pcm_accum_offset: usize,
-    flac_block_size: usize,
-    flac_pwr_sum: f32,
-    flac_pwr_frames: usize,
+    packet_samples: usize,
+    pwr_sum: f32,
+    pwr_frames: usize,
     dc: DcBlocker,
     agc: Agc,
     fm_prev: Complex32,
-    pub flac: FlacStreamEncoder,
     last_agc: (AgcSpeed, Option<f32>, Option<f32>),
     squelch: SquelchState,
 }
 
 impl AudioPipeline {
-    pub fn new(sample_rate: usize, audio_fft_size: usize) -> anyhow::Result<Self> {
+    pub fn new(
+        sample_rate: usize,
+        audio_fft_size: usize,
+        compression: AudioCompression,
+    ) -> anyhow::Result<Self> {
         let mut planner = FftPlanner::<f32>::new();
         let ifft = planner.plan_fft_inverse(audio_fft_size);
 
@@ -700,18 +831,16 @@ impl AudioPipeline {
 
         let frame_samples = audio_fft_size / 2;
 
-        // Encode a slightly larger FLAC block than the per-FFT frame output.
-        // This reduces websocket packet rate and browser-side scheduling overhead without
-        // changing the DSP/FFT configuration or the FLAC stream format.
-        let target_block_sec = 0.020_f64; // ~20ms
-        let min_block = ((sample_rate as f64) * target_block_sec).ceil().max(1.0) as usize;
-        let mut flac_block_size = frame_samples.max(min_block);
-        flac_block_size = flac_block_size.div_ceil(8) * 8; // keep alignment friendly
-        flac_block_size = flac_block_size.clamp(frame_samples, 8192);
-
-        let flac = FlacStreamEncoder::new(sample_rate, 16, flac_block_size)?;
+        // Batch ~20ms of PCM per websocket frame to reduce packet rate and browser-side scheduling
+        // overhead (too many tiny frames can stutter).
+        let target_packet_sec = 0.020_f64;
+        let min_packet = ((sample_rate as f64) * target_packet_sec).ceil().max(1.0) as usize;
+        let mut packet_samples = frame_samples.max(min_packet);
+        packet_samples = packet_samples.div_ceil(8) * 8;
+        packet_samples = packet_samples.clamp(frame_samples, 8192);
 
         Ok(Self {
+            compression,
             audio_rate: sample_rate,
             audio_fft_size,
             ifft,
@@ -725,19 +854,17 @@ impl AudioPipeline {
             carrier_prev: vec![Complex32::new(0.0, 0.0); frame_samples],
             real: vec![0.0; audio_fft_size],
             real_prev: vec![0.0; frame_samples],
-            pcm_frame_i32: vec![0; frame_samples],
             pcm_frame_i16: vec![0; frame_samples],
-            pcm_accum: Vec::with_capacity(flac_block_size * 4),
+            pcm_accum_i16: Vec::with_capacity(packet_samples * 4),
             pcm_accum_offset: 0,
-            flac_block_size,
-            flac_pwr_sum: 0.0,
-            flac_pwr_frames: 0,
+            packet_samples,
+            pwr_sum: 0.0,
+            pwr_frames: 0,
             // Keep the DC blocker cutoff low so AM has real low end; bass boost is frontend-only.
             dc: DcBlocker::new((sample_rate / 20).max(128)),
             // Match reference defaults.
             agc: Agc::new(0.1, 100.0, 30.0, 100.0, sample_rate as f32),
             fm_prev: Complex32::new(0.0, 0.0),
-            flac,
             last_agc: (AgcSpeed::Default, None, None),
             squelch: SquelchState::new(),
         })
@@ -754,10 +881,10 @@ impl AudioPipeline {
         self.fm_prev = Complex32::new(0.0, 0.0);
         self.dc.reset();
         self.agc.reset();
-        self.pcm_accum.clear();
+        self.pcm_accum_i16.clear();
         self.pcm_accum_offset = 0;
-        self.flac_pwr_sum = 0.0;
-        self.flac_pwr_frames = 0;
+        self.pwr_sum = 0.0;
+        self.pwr_frames = 0;
     }
 
     pub fn process(
@@ -773,8 +900,8 @@ impl AudioPipeline {
             return Ok(out_packets);
         }
 
-        let scaled_rv = scaled_relative_variance_power(spectrum_slice);
-        let squelch_open = self.squelch.update(params.squelch_enabled, scaled_rv);
+        let features = squelch_features(spectrum_slice);
+        let squelch_open = self.squelch.update(params.squelch_enabled, features);
         if params.squelch_enabled && !squelch_open {
             self.reset_for_squelch_gate();
             return Ok(out_packets);
@@ -940,49 +1067,50 @@ impl AudioPipeline {
         self.dc.remove_dc(audio_out);
         self.agc.process(audio_out);
 
-        // Match stream format: FLAC bits_per_sample=16.
         float_to_i16_centered(audio_out, &mut self.pcm_frame_i16, 32768.0);
-        for (dst, src) in self.pcm_frame_i32.iter_mut().zip(self.pcm_frame_i16.iter()) {
-            *dst = *src as i32;
+        self.pcm_accum_i16.extend_from_slice(&self.pcm_frame_i16);
+        self.pwr_sum += spectrum_slice.iter().map(|c| c.norm_sqr()).sum::<f32>();
+        self.pwr_frames += 1;
+
+        if self.compression != AudioCompression::Adpcm {
+            return Err(anyhow::anyhow!(
+                "FLAC audio was removed; configure audio_compression = \"adpcm\""
+            ));
         }
 
-        // Accumulate a few frames worth of PCM before encoding a FLAC block.
-        // This reduces packet rate without changing the websocket framing format.
-        self.pcm_accum.extend_from_slice(&self.pcm_frame_i32);
-        self.flac_pwr_sum += spectrum_slice.iter().map(|c| c.norm_sqr()).sum::<f32>();
-        self.flac_pwr_frames += 1;
-
-        // Drain complete FLAC blocks.
         loop {
-            let available = self.pcm_accum.len().saturating_sub(self.pcm_accum_offset);
-            if available < self.flac_block_size {
+            let available = self
+                .pcm_accum_i16
+                .len()
+                .saturating_sub(self.pcm_accum_offset);
+            if available < self.packet_samples {
                 break;
             }
-            let end = self.pcm_accum_offset + self.flac_block_size;
-            let block = &self.pcm_accum[self.pcm_accum_offset..end];
-            let flac_bytes = self.flac.encode_block(block)?;
+
+            let end = self.pcm_accum_offset + self.packet_samples;
+            let block = &self.pcm_accum_i16[self.pcm_accum_offset..end];
             self.pcm_accum_offset = end;
 
-            // Compact occasionally to avoid unbounded growth.
-            if self.pcm_accum_offset >= self.flac_block_size * 4 {
-                self.pcm_accum.drain(0..self.pcm_accum_offset);
+            let frames = self.pwr_frames.max(1) as f32;
+            let pwr = self.pwr_sum / frames;
+            self.pwr_sum = 0.0;
+            self.pwr_frames = 0;
+
+            let payload = ima_adpcm::encode_block_i16_mono(block);
+            out_packets.push(build_audio_frame(
+                AudioWireCodec::AdpcmIma,
+                frame_num,
+                0,
+                params.m,
+                spectrum_slice.len() as i32,
+                pwr,
+                &payload,
+            ));
+
+            if self.pcm_accum_offset >= self.packet_samples * 4 {
+                self.pcm_accum_i16.drain(0..self.pcm_accum_offset);
                 self.pcm_accum_offset = 0;
             }
-
-            let frames = self.flac_pwr_frames.max(1) as f32;
-            let pwr = self.flac_pwr_sum / frames;
-            self.flac_pwr_sum = 0.0;
-            self.flac_pwr_frames = 0;
-
-            let pkt = AudioPacket {
-                frame_num,
-                l: 0,
-                m: params.m,
-                r: spectrum_slice.len() as i32,
-                pwr,
-                data: &flac_bytes,
-            };
-            out_packets.push(serde_cbor::to_vec(&pkt)?);
         }
         Ok(out_packets)
     }
@@ -1057,7 +1185,7 @@ mod pipeline_tests {
             Complex32::new(0.0, 0.0),
             Complex32::new(2.0_f32.sqrt(), 0.0),
         ];
-        let scaled = scaled_relative_variance_power(&bins);
+        let scaled = squelch_features(&bins).scaled_relative_variance;
         assert!(scaled.abs() < 1e-4, "expected scaled near 0, got {scaled}");
     }
 
@@ -1066,7 +1194,7 @@ mod pipeline_tests {
         // For N bins, powers [1, 0, 0, ...] yields rv = N-1 and scaled = (N-2)*sqrt(N).
         let mut bins = vec![Complex32::new(0.0, 0.0); 64];
         bins[0] = Complex32::new(1.0, 0.0);
-        let scaled = scaled_relative_variance_power(&bins);
+        let scaled = squelch_features(&bins).scaled_relative_variance;
         assert!(
             scaled > 100.0,
             "expected scaled to be large for a single-bin spike, got {scaled}"
@@ -1076,30 +1204,38 @@ mod pipeline_tests {
     #[test]
     fn squelch_state_machine_opens_on_consecutive_soft_hits_and_closes_with_hysteresis() {
         let mut s = SquelchState::new();
+        let features = |scaled_relative_variance: f32| -> SquelchFeatures {
+            SquelchFeatures {
+                scaled_relative_variance,
+                active_bins: 64,
+                max_active_run: 32,
+                len: 1024,
+            }
+        };
 
         // Enabling squelch closes it until a signal is detected.
         assert!(
-            !s.update(true, 0.0),
+            !s.update(true, features(0.0)),
             "expected closed immediately after enable"
         );
 
         // Soft open: scaled >= 5 for 3 consecutive frames.
-        assert!(!s.update(true, 6.0));
-        assert!(!s.update(true, 6.0));
+        assert!(!s.update(true, features(6.0)));
+        assert!(!s.update(true, features(6.0)));
         assert!(
-            s.update(true, 6.0),
+            s.update(true, features(6.0)),
             "expected open after 3 consecutive soft hits"
         );
 
         // Close hysteresis: scaled < 2 for 10 consecutive frames.
         for _ in 0..9 {
             assert!(
-                s.update(true, 1.0),
+                s.update(true, features(1.0)),
                 "expected to remain open during close hysteresis"
             );
         }
         assert!(
-            !s.update(true, 1.0),
+            !s.update(true, features(1.0)),
             "expected to close after hysteresis completes"
         );
     }
