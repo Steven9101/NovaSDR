@@ -174,7 +174,7 @@ fn load_or_create_config(path: &Path) -> anyhow::Result<Value> {
 
     Ok(json!({
       "server": { "port": 9002, "host": "[::]", "html_root": "frontend/dist/", "otherusers": 1, "threads": 1 },
-      "websdr": { "register_online": false, "name": "NovaSDR", "antenna": "", "grid_locator": "-", "hostname": "", "operator": "", "email": "", "callsign_lookup_url": "https://www.qrz.com/db/", "chat_enabled": true },
+      "websdr": { "register_online": false, "name": "NovaSDR", "antenna": "", "grid_locator": "-", "hostname": "", "operator": "", "email": "", "chat_enabled": true },
       "limits": { "audio": 1000, "waterfall": 1000, "events": 1000 }
     }))
 }
@@ -354,6 +354,25 @@ fn configure_global(cfg: &mut Value) -> anyhow::Result<()> {
         .context("prompt websdr.grid_locator")?;
     websdr.insert("grid_locator".to_string(), json!(grid));
 
+    let public_port_default = websdr
+        .get("public_port")
+        .and_then(Value::as_u64)
+        .map(|v| v.to_string())
+        .unwrap_or_default();
+    let public_port_raw = Text::new("Public port for SDR lists (blank = use server port)")
+        .with_default(public_port_default.as_str())
+        .prompt()
+        .context("prompt websdr.public_port")?;
+    let public_port_raw = public_port_raw.trim();
+    if public_port_raw.is_empty() {
+        websdr.insert("public_port".to_string(), Value::Null);
+    } else {
+        let port = public_port_raw
+            .parse::<u16>()
+            .context("parse websdr.public_port")?;
+        websdr.insert("public_port".to_string(), json!(port));
+    }
+
     Ok(())
 }
 
@@ -361,10 +380,12 @@ fn configure_extras(config_path: &Path) -> anyhow::Result<()> {
     let overlay_paths = crate::overlays::overlay_paths_for_config(config_path);
     let markers_existed = overlay_paths.markers.exists();
     let bands_existed = overlay_paths.bands.exists();
+    let header_existed = overlay_paths.header_panel.exists();
 
     let paths = crate::overlays::ensure_default_overlays(config_path).context("init overlays")?;
     let markers_path = paths.markers;
     let bands_path = paths.bands;
+    let header_path = paths.header_panel;
 
     ui::blank();
     ui::line("Overlays (bands) and markers");
@@ -399,12 +420,23 @@ fn configure_extras(config_path: &Path) -> anyhow::Result<()> {
         }
     }
 
+    if !header_existed {
+        let edit_now = Confirm::new("Configure header panel overlay now?")
+            .with_default(false)
+            .prompt()
+            .context("prompt configure header panel now")?;
+        if edit_now {
+            edit_header_panel(&header_path)?;
+        }
+    }
+
     loop {
         let choice = Select::new(
             "What do you want to do?",
             vec![
                 format!("Markers ({})", markers_path.display()),
                 format!("Bands ({})", bands_path.display()),
+                format!("Header panel ({})", header_path.display()),
                 "Markers: clear (empty)".to_string(),
                 "Bands: reset to default band plan".to_string(),
                 "Bands: start empty".to_string(),
@@ -421,6 +453,8 @@ fn configure_extras(config_path: &Path) -> anyhow::Result<()> {
             edit_markers(&markers_path)?;
         } else if choice.starts_with("Bands") {
             edit_bands(&bands_path)?;
+        } else if choice.starts_with("Header panel") {
+            edit_header_panel(&header_path)?;
         } else if choice == "Markers: clear (empty)" {
             let ok = Confirm::new("Replace overlays/markers.json with an empty markers list?")
                 .with_default(false)
@@ -534,6 +568,202 @@ fn edit_markers(path: &Path) -> anyhow::Result<()> {
             continue;
         }
     }
+
+    write_json(path, &root)
+}
+
+fn edit_header_panel(path: &Path) -> anyhow::Result<()> {
+    let mut root = if path.exists() {
+        read_json(path).context("read header_panel.json")?
+    } else {
+        crate::overlays::default_header_panel_value()
+    };
+
+    let obj = root
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("header_panel.json: expected an object"))?;
+
+    let enabled = Confirm::new("Enable header panel in UI?")
+        .with_default(obj.get("enabled").and_then(Value::as_bool).unwrap_or(false))
+        .prompt()
+        .context("prompt header_panel.enabled")?;
+    obj.insert("enabled".to_string(), json!(enabled));
+
+    let title = Text::new("Header panel title")
+        .with_default(
+            obj.get("title")
+                .and_then(Value::as_str)
+                .unwrap_or("About this receiver"),
+        )
+        .prompt()
+        .context("prompt header_panel.title")?;
+    obj.insert("title".to_string(), json!(title));
+
+    let about_default = obj
+        .get("about")
+        .and_then(Value::as_str)
+        .unwrap_or("Short operator-provided description.");
+    let about = Text::new("About text (use \\n for newlines)")
+        .with_default(about_default.replace('\n', "\\n").as_str())
+        .prompt()
+        .context("prompt header_panel.about")?;
+    obj.insert("about".to_string(), json!(about.replace("\\n", "\n")));
+
+    let donation_enabled = Confirm::new("Show donation button?")
+        .with_default(
+            obj.get("donation_enabled")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        )
+        .prompt()
+        .context("prompt header_panel.donation_enabled")?;
+    obj.insert("donation_enabled".to_string(), json!(donation_enabled));
+
+    let donation_url_default = obj
+        .get("donation_url")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let donation_url = Text::new("Donation URL")
+        .with_default(donation_url_default)
+        .prompt()
+        .context("prompt header_panel.donation_url")?;
+    obj.insert("donation_url".to_string(), json!(donation_url));
+
+    let donation_label_default = obj
+        .get("donation_label")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let donation_label = Text::new("Donation button label")
+        .with_default(donation_label_default)
+        .prompt()
+        .context("prompt header_panel.donation_label")?;
+    obj.insert("donation_label".to_string(), json!(donation_label));
+
+    let existing_items = obj
+        .get("items")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+
+    let mut out_items = Vec::<Value>::new();
+    for idx in 0..3usize {
+        let existing = existing_items.get(idx).and_then(Value::as_object);
+        let label_default = existing
+            .and_then(|o| o.get("label").and_then(Value::as_str))
+            .unwrap_or("");
+        let value_default = existing
+            .and_then(|o| o.get("value").and_then(Value::as_str))
+            .unwrap_or("");
+
+        let label = Text::new(&format!("Info row {} label (optional)", idx + 1))
+            .with_default(label_default)
+            .prompt()
+            .context("prompt header_panel.items.label")?;
+        let value = Text::new(&format!("Info row {} value (optional)", idx + 1))
+            .with_default(value_default)
+            .prompt()
+            .context("prompt header_panel.items.value")?;
+
+        let label = label.trim();
+        let value = value.trim();
+        if !label.is_empty() && !value.is_empty() {
+            out_items.push(json!({ "label": label, "value": value }));
+        }
+    }
+    obj.insert("items".to_string(), Value::Array(out_items));
+
+    let images_default = obj
+        .get("images")
+        .and_then(Value::as_array)
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str())
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .take(3)
+                .collect::<Vec<_>>()
+                .join(",")
+        })
+        .unwrap_or_default();
+    let images_raw = Text::new("Image filenames in html_root (comma-separated, up to 3)")
+        .with_default(images_default.as_str())
+        .prompt()
+        .context("prompt header_panel.images")?;
+    let images = images_raw
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .take(3)
+        .map(|s| json!(s))
+        .collect::<Vec<_>>();
+    obj.insert("images".to_string(), Value::Array(images));
+
+    let widgets = obj
+        .entry("widgets")
+        .or_insert_with(|| json!({}))
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("header_panel.json: widgets must be an object"))?;
+
+    let hamqsl = Confirm::new("Show HAMQSL solar widget?")
+        .with_default(
+            widgets
+                .get("hamqsl")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        )
+        .prompt()
+        .context("prompt header_panel.widgets.hamqsl")?;
+    widgets.insert("hamqsl".to_string(), json!(hamqsl));
+
+    let blitz = Confirm::new("Show Blitzortung map widget?")
+        .with_default(
+            widgets
+                .get("blitzortung")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        )
+        .prompt()
+        .context("prompt header_panel.widgets.blitzortung")?;
+    widgets.insert("blitzortung".to_string(), json!(blitz));
+
+    let lookups = obj
+        .entry("lookups")
+        .or_insert_with(|| json!({}))
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("header_panel.json: lookups must be an object"))?;
+
+    let callsign = Confirm::new("Enable callsign lookup (QRZ)?")
+        .with_default(
+            lookups
+                .get("callsign")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        )
+        .prompt()
+        .context("prompt header_panel.lookups.callsign")?;
+    lookups.insert("callsign".to_string(), json!(callsign));
+
+    let mwlist = Confirm::new("Enable MWLIST frequency lookup?")
+        .with_default(
+            lookups
+                .get("mwlist")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        )
+        .prompt()
+        .context("prompt header_panel.lookups.mwlist")?;
+    lookups.insert("mwlist".to_string(), json!(mwlist));
+
+    let shortwave_info = Confirm::new("Enable short-wave.info frequency lookup?")
+        .with_default(
+            lookups
+                .get("shortwave_info")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        )
+        .prompt()
+        .context("prompt header_panel.lookups.shortwave_info")?;
+    lookups.insert("shortwave_info".to_string(), json!(shortwave_info));
 
     write_json(path, &root)
 }

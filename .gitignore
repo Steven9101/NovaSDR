@@ -26,6 +26,9 @@ fftw_wisdom
 logs/
 legacy/
 overlays/
+!config/overlays/
+!config/overlays/**
+
 
 # Prerequisites
 *.d

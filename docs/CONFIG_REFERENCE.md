@@ -29,14 +29,35 @@ If the files are missing, NovaSDR creates defaults on startup (empty markers; a 
 |---|---:|---:|---|
 | `register_online` | bool | `false` | Enables periodic registration updates to `register_url` |
 | `register_url` | string | `"https://sdr-list.xyz/api/update_websdr"` | Registration endpoint |
+| `public_port` | int | (unset) | Port advertised to SDR lists when behind a reverse proxy (defaults to `server.port`) |
 | `name` | string | `"NovaSDR"` | Used by `/server-info.json` |
 | `antenna` | string | `""` | Informational |
 | `grid_locator` | string | `"-"` | Used by UI and settings |
 | `hostname` | string | `""` | Informational |
 | `operator` | string | `""` | Used by `/server-info.json` |
 | `email` | string | `""` | Used by `/server-info.json` |
-| `callsign_lookup_url` | string | `"https://www.qrz.com/db/"` | UI link |
 | `chat_enabled` | bool | `true` | Enables chat in UI |
+
+### `config/overlays/header_panel.json`
+
+This overlay config controls an optional collapsible header panel in the UI.
+The file is created automatically on startup if missing.
+
+| Key | Type | Default | Notes |
+|---|---:|---:|---|
+| `enabled` | bool | `false` | Shows the collapse/expand arrow in the header |
+| `title` | string | `"About this receiver"` | Panel title (shown when expanded) |
+| `about` | string | (example text) | Short operator-provided text; newlines preserved |
+| `donation_enabled` | bool | `false` | When `true`, shows a donation button |
+| `donation_url` | string | (example URL) | Donation link URL |
+| `donation_label` | string | (example label) | Button label (defaults to "Donate" in UI if empty) |
+| `items` | array | (example items) | Manual info rows (label/value) shown in the expanded panel |
+| `images` | array | (example names) | Up to 3 image filenames in `server.html_root` (e.g. `frontend/dist/station-1.png` → `"station-1.png"`) |
+| `widgets.hamqsl` | bool | `false` | Shows the HAMQSL solar-terrestrial widget |
+| `widgets.blitzortung` | bool | `false` | Shows the Blitzortung widget |
+| `lookups.callsign` | bool | `false` | Enables QRZ callsign lookup in the header |
+| `lookups.mwlist` | bool | `false` | Enables MWLIST frequency lookup button |
+| `lookups.shortwave_info` | bool | `false` | Enables short-wave.info frequency lookup button |
 
 ### `limits`
 

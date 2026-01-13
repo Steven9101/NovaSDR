@@ -43,6 +43,8 @@ pub struct WebSdr {
     pub register_online: bool,
     #[serde(default = "default_sdr_list_url")]
     pub register_url: String,
+    #[serde(default)]
+    pub public_port: Option<u16>,
     #[serde(default = "default_name")]
     pub name: String,
     #[serde(default)]
@@ -55,8 +57,6 @@ pub struct WebSdr {
     pub operator: String,
     #[serde(default)]
     pub email: String,
-    #[serde(default = "default_callsign_lookup")]
-    pub callsign_lookup_url: String,
     #[serde(default = "default_chat_enabled")]
     pub chat_enabled: bool,
 }
@@ -233,9 +233,6 @@ fn default_name() -> String {
 fn default_grid() -> String {
     "-".to_string()
 }
-fn default_callsign_lookup() -> String {
-    "https://www.qrz.com/db/".to_string()
-}
 fn default_sdr_list_url() -> String {
     "https://sdr-list.xyz/api/update_websdr".to_string()
 }
@@ -295,13 +292,13 @@ impl Default for WebSdr {
         Self {
             register_online: false,
             register_url: default_sdr_list_url(),
+            public_port: None,
             name: default_name(),
             antenna: String::new(),
             grid_locator: default_grid(),
             hostname: String::new(),
             operator: String::new(),
             email: String::new(),
-            callsign_lookup_url: default_callsign_lookup(),
             chat_enabled: default_chat_enabled(),
         }
     }
@@ -341,6 +338,53 @@ struct GlobalConfigFile {
     pub active_receiver_id: Option<String>,
 }
 
+fn migrate_global_config_json(value: &mut serde_json::Value) -> bool {
+    let Some(obj) = value.as_object_mut() else {
+        return false;
+    };
+
+    let mut changed = false;
+
+    // Migration: older configs used "html/" as the default html_root.
+    // Release packages ship the UI under "frontend/dist/".
+    if let Some(server) = obj.get_mut("server").and_then(|v| v.as_object_mut()) {
+        if let Some(html_root) = server.get_mut("html_root") {
+            if let Some(s) = html_root.as_str() {
+                if s == "html/" {
+                    *html_root = serde_json::Value::String("frontend/dist/".to_string());
+                    changed = true;
+                }
+            }
+        }
+    }
+
+    // Ensure websdr.public_port exists for older configs.
+    let websdr = obj
+        .entry("websdr")
+        .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
+    if let Some(websdr_obj) = websdr.as_object_mut() {
+        if !websdr_obj.contains_key("public_port") {
+            websdr_obj.insert("public_port".to_string(), serde_json::Value::Null);
+            changed = true;
+        }
+    }
+
+    changed
+}
+
+fn write_json_atomic(path: &Path, value: &serde_json::Value) -> anyhow::Result<()> {
+    let tmp = path.with_extension("tmp");
+    let mut s = serde_json::to_string_pretty(value).context("serialize json")?;
+    s.push('\n');
+    std::fs::write(&tmp, s).with_context(|| format!("write {}", tmp.display()))?;
+
+    // std::fs::rename does not reliably replace existing files on Windows.
+    // Use copy + delete to keep behavior consistent across platforms.
+    std::fs::copy(&tmp, path).with_context(|| format!("copy {}", tmp.display()))?;
+    std::fs::remove_file(&tmp).with_context(|| format!("remove {}", tmp.display()))?;
+    Ok(())
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct ReceiversFile {
     pub receivers: Vec<ReceiverConfig>,
@@ -349,8 +393,16 @@ struct ReceiversFile {
 pub fn load_from_files(config_json: &Path, receivers_json: &Path) -> anyhow::Result<Config> {
     let raw = std::fs::read_to_string(config_json)
         .with_context(|| format!("read {}", config_json.display()))?;
-    let global: GlobalConfigFile =
+
+    let mut global_value: serde_json::Value =
         serde_json::from_str(&raw).with_context(|| format!("parse {}", config_json.display()))?;
+    if migrate_global_config_json(&mut global_value) {
+        write_json_atomic(config_json, &global_value)
+            .with_context(|| format!("persist migrated {}", config_json.display()))?;
+    }
+
+    let global: GlobalConfigFile = serde_json::from_value(global_value)
+        .with_context(|| format!("parse {}", config_json.display()))?;
 
     let raw = std::fs::read_to_string(receivers_json)
         .with_context(|| format!("read {}", receivers_json.display()))?;
