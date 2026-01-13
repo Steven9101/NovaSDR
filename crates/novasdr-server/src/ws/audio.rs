@@ -179,7 +179,7 @@ mod ima_adpcm {
         };
 
         let codes = samples.len().saturating_sub(1);
-        let mut out = Vec::with_capacity(6 + (codes + 1) / 2);
+        let mut out = Vec::with_capacity(6 + codes.div_ceil(2));
         out.extend_from_slice(&(samples[0]).to_le_bytes());
         out.push(index as u8);
         out.push(0);
