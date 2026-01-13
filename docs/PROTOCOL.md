@@ -3,7 +3,7 @@
 NovaSDR serves:
 
 - HTTP static UI from `server.html_root`
-- `GET /server-info.json` (JSON)
+- `GET /server-info.json` (JSON; includes `headerPanel` when configured)
 - `GET /receivers.json` (JSON; list of configured receivers)
 - WebSockets:
   - `/waterfall` (text JSON settings, then binary zstd+CBOR packets)

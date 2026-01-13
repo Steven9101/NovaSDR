@@ -4,6 +4,10 @@ The UI expects the WebSocket and packet formats described in `PROTOCOL.md`.
 
 `frontend/` is the current React UI (shadcn/ui). It is served from `server.html_root`.
 
+## Optional header panel
+
+The top header can optionally show a collapse/expand affordance that reveals operator-provided receiver information, images, and widgets. It is configured via `websdr.header_panel` in `config/config.json`.
+
 The WASM DSP and Zstd stream decoder modules are kept in `frontend/src/modules/` and reused by the new UI.
 
 ## Receiver UI layout

@@ -43,6 +43,8 @@ pub struct WebSdr {
     pub register_online: bool,
     #[serde(default = "default_sdr_list_url")]
     pub register_url: String,
+    #[serde(default)]
+    pub public_port: Option<u16>,
     #[serde(default = "default_name")]
     pub name: String,
     #[serde(default)]
@@ -59,6 +61,34 @@ pub struct WebSdr {
     pub callsign_lookup_url: String,
     #[serde(default = "default_chat_enabled")]
     pub chat_enabled: bool,
+    #[serde(default)]
+    pub header_panel: HeaderPanel,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct HeaderPanel {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub about: String,
+    #[serde(default)]
+    pub donation_url: String,
+    #[serde(default)]
+    pub donation_label: String,
+    #[serde(default)]
+    pub images: Vec<String>,
+    #[serde(default)]
+    pub widgets: HeaderPanelWidgets,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct HeaderPanelWidgets {
+    #[serde(default)]
+    pub hamqsl: bool,
+    #[serde(default)]
+    pub blitzortung_embed_url: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -295,6 +325,7 @@ impl Default for WebSdr {
         Self {
             register_online: false,
             register_url: default_sdr_list_url(),
+            public_port: None,
             name: default_name(),
             antenna: String::new(),
             grid_locator: default_grid(),
@@ -303,6 +334,7 @@ impl Default for WebSdr {
             email: String::new(),
             callsign_lookup_url: default_callsign_lookup(),
             chat_enabled: default_chat_enabled(),
+            header_panel: HeaderPanel::default(),
         }
     }
 }
@@ -341,6 +373,44 @@ struct GlobalConfigFile {
     pub active_receiver_id: Option<String>,
 }
 
+fn migrate_global_config_json(value: &mut serde_json::Value) -> bool {
+    let Some(obj) = value.as_object_mut() else {
+        return false;
+    };
+
+    let Some(server) = obj.get_mut("server").and_then(|v| v.as_object_mut()) else {
+        return false;
+    };
+
+    // Migration: older configs used "html/" as the default html_root.
+    // Release packages ship the UI under "frontend/dist/".
+    let Some(html_root) = server.get_mut("html_root") else {
+        return false;
+    };
+    let Some(s) = html_root.as_str() else {
+        return false;
+    };
+    if s == "html/" {
+        *html_root = serde_json::Value::String("frontend/dist/".to_string());
+        return true;
+    }
+
+    false
+}
+
+fn write_json_atomic(path: &Path, value: &serde_json::Value) -> anyhow::Result<()> {
+    let tmp = path.with_extension("tmp");
+    let mut s = serde_json::to_string_pretty(value).context("serialize json")?;
+    s.push('\n');
+    std::fs::write(&tmp, s).with_context(|| format!("write {}", tmp.display()))?;
+
+    // std::fs::rename does not reliably replace existing files on Windows.
+    // Use copy + delete to keep behavior consistent across platforms.
+    std::fs::copy(&tmp, path).with_context(|| format!("copy {}", tmp.display()))?;
+    std::fs::remove_file(&tmp).with_context(|| format!("remove {}", tmp.display()))?;
+    Ok(())
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct ReceiversFile {
     pub receivers: Vec<ReceiverConfig>,
@@ -349,8 +419,16 @@ struct ReceiversFile {
 pub fn load_from_files(config_json: &Path, receivers_json: &Path) -> anyhow::Result<Config> {
     let raw = std::fs::read_to_string(config_json)
         .with_context(|| format!("read {}", config_json.display()))?;
-    let global: GlobalConfigFile =
+
+    let mut global_value: serde_json::Value =
         serde_json::from_str(&raw).with_context(|| format!("parse {}", config_json.display()))?;
+    if migrate_global_config_json(&mut global_value) {
+        write_json_atomic(config_json, &global_value)
+            .with_context(|| format!("persist migrated {}", config_json.display()))?;
+    }
+
+    let global: GlobalConfigFile = serde_json::from_value(global_value)
+        .with_context(|| format!("parse {}", config_json.display()))?;
 
     let raw = std::fs::read_to_string(receivers_json)
         .with_context(|| format!("read {}", receivers_json.display()))?;
