@@ -142,8 +142,28 @@ impl Default for ReceiverDefaults {
 pub enum InputDriver {
     #[serde(rename = "stdin")]
     Stdin { format: SampleFormat },
+    #[serde(rename = "fifo")]
+    Fifo { format: SampleFormat, path: String },
     #[serde(rename = "soapysdr")]
     SoapySdr(SoapySdrDriver),
+}
+
+impl InputDriver {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            InputDriver::Stdin { .. } => "stdin",
+            InputDriver::Fifo { .. } => "fifo",
+            InputDriver::SoapySdr(_) => "soapysdr",
+        }
+    }
+
+    pub fn get_sample_format(&self) -> SampleFormat {
+        match self {
+            InputDriver::Stdin { format } => *format,
+            InputDriver::Fifo { format, path: _ } => *format,
+            InputDriver::SoapySdr(d) => d.format,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

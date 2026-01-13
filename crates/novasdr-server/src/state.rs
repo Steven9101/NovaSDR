@@ -449,10 +449,6 @@ pub async fn receivers_info(State(state): State<Arc<AppState>>) -> impl IntoResp
         .receivers
         .iter()
         .map(|r| {
-            let driver = match &r.input.driver {
-                config::InputDriver::Stdin { .. } => "stdin",
-                config::InputDriver::SoapySdr(_) => "soapysdr",
-            };
             let rt = state
                 .receiver_state(r.id.as_str())
                 .map(|rx| rx.rt.as_ref())
@@ -460,7 +456,7 @@ pub async fn receivers_info(State(state): State<Arc<AppState>>) -> impl IntoResp
             json!({
                 "id": r.id,
                 "name": r.name,
-                "driver": driver,
+                "driver": r.input.driver.as_str(),
                 "min_hz": rt.map(|(min, _)| min),
                 "max_hz": rt.map(|(_, max)| max),
             })
