@@ -29,7 +29,6 @@ If the files are missing, NovaSDR creates defaults on startup (empty markers; a 
 |---|---:|---:|---|
 | `register_online` | bool | `false` | Enables periodic registration updates to `register_url` |
 | `register_url` | string | `"https://sdr-list.xyz/api/update_websdr"` | Registration endpoint |
-| `public_port` | int | (unset) | Port advertised to SDR lists when behind a reverse proxy (defaults to `server.port`) |
 | `name` | string | `"NovaSDR"` | Used by `/server-info.json` |
 | `antenna` | string | `""` | Informational |
 | `grid_locator` | string | `"-"` | Used by UI and settings |
@@ -38,26 +37,6 @@ If the files are missing, NovaSDR creates defaults on startup (empty markers; a 
 | `email` | string | `""` | Used by `/server-info.json` |
 | `callsign_lookup_url` | string | `"https://www.qrz.com/db/"` | UI link |
 | `chat_enabled` | bool | `true` | Enables chat in UI |
-| `header_panel` | object | (see below) | Optional collapsible header info panel in the UI |
-
-#### `websdr.header_panel`
-
-| Key | Type | Default | Notes |
-|---|---:|---:|---|
-| `enabled` | bool | `false` | Shows the collapse/expand arrow in the header |
-| `title` | string | `""` | Panel title (shown when expanded) |
-| `about` | string | `""` | Short operator-provided text (plain text; newlines preserved) |
-| `donation_url` | string | `""` | Optional donation link URL |
-| `donation_label` | string | `""` | Button label for the donation link (defaults to "Donate" in UI) |
-| `images` | array | `[]` | Up to 3 image URLs/paths to show when expanded |
-| `widgets` | object | (see below) | Optional widgets to show below receiver info |
-
-#### `websdr.header_panel.widgets`
-
-| Key | Type | Default | Notes |
-|---|---:|---:|---|
-| `hamqsl` | bool | `false` | Shows the HAMQSL solar-terrestrial image widget |
-| `blitzortung_embed_url` | string | `""` | Optional iframe embed URL (if empty, widget is hidden) |
 
 ### `limits`
 

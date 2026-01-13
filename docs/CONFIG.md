@@ -34,8 +34,6 @@ Configuration:
 
 The registration payload includes server name, antenna, grid locator, hostname, port, user count, bandwidth and center frequency.
 
-If NovaSDR is running behind a reverse proxy (for example terminating HTTPS on port 443), set `websdr.public_port` so SDR lists show the correct public port.
-
 ## Minimal working config
 
 `config/config.json`:
@@ -43,7 +41,7 @@ If NovaSDR is running behind a reverse proxy (for example terminating HTTPS on p
 ```json
 {
   "server": { "host": "[::]", "port": 9002, "html_root": "frontend/dist/", "otherusers": 1, "threads": 0 },
-  "websdr": { "name": "NovaSDR", "operator": "operator", "email": "operator@example.com", "grid_locator": "-", "chat_enabled": true, "public_port": 9002 },
+  "websdr": { "name": "NovaSDR", "operator": "operator", "email": "operator@example.com", "grid_locator": "-", "chat_enabled": true },
   "limits": { "audio": 1000, "waterfall": 1000, "events": 1000, "ws_per_ip": 50 },
   "updates": { "check_on_startup": true, "github_repo": "Steven9101/NovaSDR" },
   "active_receiver_id": "rx0"
@@ -98,34 +96,6 @@ Some runtime values are derived from the configuration:
 `audio_sps` must be `<= 48000`.
 
 The server clamps the default audio window (`receivers[].input.defaults`) to fit into `audio_max_fft_size` so audio always starts.
-
-## Optional: Header info panel
-
-NovaSDR can show an operator-configured expandable panel in the UI header (receiver details + optional images/widgets).
-
-Add `websdr.header_panel` in `config/config.json`:
-
-```json
-{
-  "websdr": {
-    "header_panel": {
-      "enabled": true,
-      "title": "About this receiver",
-      "about": "Short description shown in the header.\nNewlines are preserved.",
-      "donation_url": "https://example.com/donate",
-      "donation_label": "Support this SDR",
-      "images": [
-        "/assets/station-1.jpg",
-        "/assets/station-2.jpg"
-      ],
-      "widgets": {
-        "hamqsl": true,
-        "blitzortung_embed_url": ""
-      }
-    }
-  }
-}
-```
 
 ## Optional: USB/LSB default passband
 

@@ -607,15 +607,6 @@ pub struct WaterfallParams {
 
 pub async fn server_info(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let cfg = &state.cfg;
-    let header = &cfg.websdr.header_panel;
-    let images: Vec<&str> = header
-        .images
-        .iter()
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-        .take(3)
-        .collect();
-
     Json(json!({
         "serverName": cfg.websdr.name,
         "location": cfg.websdr.grid_locator,
@@ -623,18 +614,6 @@ pub async fn server_info(State(state): State<Arc<AppState>>) -> impl IntoRespons
         "email": cfg.websdr.email,
         "chatEnabled": cfg.websdr.chat_enabled,
         "version": env!("CARGO_PKG_VERSION"),
-        "headerPanel": {
-            "enabled": header.enabled,
-            "title": header.title,
-            "about": header.about,
-            "donationUrl": header.donation_url,
-            "donationLabel": header.donation_label,
-            "images": images,
-            "widgets": {
-                "hamqsl": header.widgets.hamqsl,
-                "blitzortungEmbedUrl": header.widgets.blitzortung_embed_url,
-            }
-        }
     }))
 }
 
