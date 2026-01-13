@@ -101,8 +101,8 @@ The server clamps the default audio window (`receivers[].input.defaults`) to fit
 
 By default, NovaSDR uses:
 
-- `USB`: `+300..+3000 Hz`
-- `LSB`: `-3000..-300 Hz`
+- `USB`: `+100..+2800 Hz`
+- `LSB`: `-2800..-100 Hz`
 
 To override that per receiver, add `ssb_lowcut_hz` / `ssb_highcut_hz` under `receivers[].input.defaults`:
 

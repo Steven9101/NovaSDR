@@ -39,16 +39,7 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
         for rx in state.receivers.values() {
             let rx_id = rx.receiver.id.as_str();
             for entry in rx.audio_clients.iter() {
-                let p = match entry.params.lock() {
-                    Ok(g) => g.clone(),
-                    Err(poisoned) => {
-                        tracing::error!(
-                            unique_id = %entry.unique_id,
-                            "audio params mutex poisoned; recovering"
-                        );
-                        poisoned.into_inner().clone()
-                    }
-                };
+                let p = entry.params.load();
                 snapshot.insert(format!("{rx_id}:{}", entry.unique_id), (p.l, p.m, p.r));
             }
         }

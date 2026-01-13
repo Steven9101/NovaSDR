@@ -9,7 +9,7 @@ sequenceDiagram
   participant State as Shared State
 
   WS->>State: register clients (audio/waterfall/events/chat)
-  DSP->>State: read client params (locks per-client)
+  DSP->>State: read client params (audio is lock-free)
   DSP->>WS: push encoded packets to per-client channels
   WS->>Client: websocket send
 ```
@@ -19,7 +19,8 @@ sequenceDiagram
 Implementation: `crates/novasdr-server/src/state.rs`
 
 - `DashMap` for client registries (fast concurrent access)
-- Per-client `Mutex` for mutable tuning/AGC parameters and DSP pipelines
+- Audio params stored in atomics (DSP reads lock-free)
+- Per-client `Mutex` for DSP pipelines (and waterfall params)
 - Atomic counters for bitrate accounting
 
 ## Marker updates

@@ -19,7 +19,7 @@ If the files are missing, NovaSDR creates defaults on startup (empty markers; a 
 |---|---:|---:|---|
 | `port` | int | `9002` | Listen port |
 | `host` | string | `"[::]"` | Bind address |
-| `html_root` | string | `"html/"` | Static UI directory (e.g. `frontend/dist/`) |
+| `html_root` | string | `"frontend/dist/"` | Static UI directory (e.g. `frontend/dist/`) |
 | `otherusers` | int | `1` | Enables "other users" overlays (`/events` `signal_changes`) |
 | `threads` | int | `0` | Tokio worker thread count (`0` = auto; clamped to available CPU cores) |
 
@@ -133,15 +133,15 @@ Extra keys supported for `{"kind":"soapysdr", ...}`:
 |---|---:|---|
 | `frequency` | int | `-1` means "center" |
 | `modulation` | string | `USB`, `LSB`, `AM`, `SAM`, `FM`, `FMC`, `WBFM` |
-| `ssb_lowcut_hz` | int | Optional. Default `300`. Only used when `modulation` is `USB`/`LSB`. |
-| `ssb_highcut_hz` | int | Optional. Default `3000`. Only used when `modulation` is `USB`/`LSB`. Must be `> ssb_lowcut_hz`. |
+| `ssb_lowcut_hz` | int | Optional. Default `100`. Only used when `modulation` is `USB`/`LSB`. |
+| `ssb_highcut_hz` | int | Optional. Default `2800`. Only used when `modulation` is `USB`/`LSB`. Must be `> ssb_lowcut_hz`. |
 | `squelch_enabled` | bool | Optional. Default `false`. If `true`, the UI may enable squelch automatically on first connect. |
 
 The backend clamps the derived default `(l,r)` audio window to `audio_max_fft_size` so `/audio` always starts.
 
 Default audio window shapes (derived from `defaults.modulation`):
-- `USB`: `+ssb_lowcut_hz..+ssb_highcut_hz` relative to the tuned carrier (defaults: `+300..+3000 Hz`)
-- `LSB`: `-ssb_highcut_hz..-ssb_lowcut_hz` relative to the tuned carrier (defaults: `-3000..-300 Hz`)
+- `USB`: `+ssb_lowcut_hz..+ssb_highcut_hz` relative to the tuned carrier (defaults: `+100..+2800 Hz`)
+- `LSB`: `-ssb_highcut_hz..-ssb_lowcut_hz` relative to the tuned carrier (defaults: `-2800..-100 Hz`)
 - `AM` / `SAM` / `FM`: `±5 kHz`
 - `FMC`: `±5 kHz` (frontend applies an extra ~300 Hz high-pass to reduce CTCSS)
 - `WBFM`: `±96 kHz` (default only; usable width is limited by `audio_sps`)

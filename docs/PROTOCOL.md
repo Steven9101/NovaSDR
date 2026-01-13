@@ -38,7 +38,7 @@ Clients send JSON objects with `cmd`:
 - `chat` (`username`, `message`, optional `user_id`, optional `reply_to_id`, optional `reply_to_username`)
 
 Notes:
-- For `/audio`, `m` is the tuned center bin and may be outside the selected window (for example SSB low-cut windows like USB `+300..+3000 Hz` or LSB `-3000..-300 Hz` relative to `m`).
+- For `/audio`, `m` is the tuned center bin and may be outside the selected window (for example SSB low-cut windows like USB `+100..+2800 Hz` or LSB `-2800..-100 Hz` relative to `m`).
 
 ## `/waterfall` binary frames
 
@@ -69,12 +69,16 @@ Header (36 bytes):
 5       codec = u8 (1=IMA ADPCM)
 6..8    reserved = u16 (0)
 8..16   frame_num = u64
-16..20  l = i32
-20..28  m = f64
-28..32  r = i32
+16..20  l = i32 (window start index)
+20..28  m = f64 (tuned center bin)
+28..32  r = i32 (window end index)
 32..36  pwr = f32
 36..    payload bytes
 ```
+
+Notes:
+- For the current audio stream implementation, `l`/`r` in the audio header refer to indices within the spectrum slice used for demodulation, not absolute bins in the full FFT result. Today the server sends `l=0` and `r=slice_len`.
+- `pwr` is the average power across the same slice that produced the audio.
 
 Payload:
 - codec `1` (IMA ADPCM, mono): a single self-contained block:

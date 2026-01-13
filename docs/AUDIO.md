@@ -17,6 +17,16 @@ graph LR
   I --> J[audio websocket frames]
 ```
 
+## AGC (lookahead, peak-based)
+
+After DC removal, the backend applies a peak-based automatic gain control (AGC) to stabilize perceived loudness.
+
+Defaults:
+- Lookahead: ~100 ms
+- Effective maximum gain: 10x
+
+When AGC speed is set to `off`, the backend bypasses AGC (no added latency).
+
 ## Modes
 
 The server accepts demodulation changes from the frontend:

@@ -63,7 +63,7 @@ On first connect, the UI reads `defaults.modulation` from the settings JSON and 
 UI sends `cmd: "window"` to both `/audio` and `/waterfall`.
 
 For `/audio`, `m` (center bin) is required to compute the demodulation mapping.
-For SSB, the UI may use a one-sided window (USB `+300..+3000 Hz` / LSB `-3000..-300 Hz` relative to the tuned `m`).
+For SSB, the UI may use a one-sided window (USB `+100..+2800 Hz` / LSB `-2800..-100 Hz` relative to the tuned `m`).
 
 ## Audio decoding
 

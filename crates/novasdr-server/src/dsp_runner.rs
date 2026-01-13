@@ -566,16 +566,7 @@ fn send_audio(
 ) {
     let fft_result_size = ctx.rt.fft_result_size;
     for entry in ctx.receiver.audio_clients.iter() {
-        let params = match entry.params.lock() {
-            Ok(g) => g.clone(),
-            Err(poisoned) => {
-                tracing::error!(
-                    unique_id = %entry.unique_id,
-                    "audio params mutex poisoned; recovering"
-                );
-                poisoned.into_inner().clone()
-            }
-        };
+        let params = entry.params.load();
         let l = params.l.max(0) as usize;
         let r = params.r.max(0) as usize;
         if r <= l || r > fft_result_size {
@@ -588,11 +579,15 @@ fn send_audio(
         let idx = (l + ctx.base_idx) % fft_result_size;
 
         // Pass raw unnormalized FFT bins to the audio demod path.
-        bins_buf.resize(len, Complex32::new(0.0, 0.0));
-        for k in 0..len {
-            bins_buf[k] = spectrum[(idx + k) % fft_result_size];
-        }
-        let slice = bins_buf.as_slice();
+        let slice = if idx + len <= fft_result_size {
+            &spectrum[idx..(idx + len)]
+        } else {
+            bins_buf.resize(len, Complex32::new(0.0, 0.0));
+            let first = fft_result_size - idx;
+            bins_buf[..first].copy_from_slice(&spectrum[idx..]);
+            bins_buf[first..].copy_from_slice(&spectrum[..(len - first)]);
+            bins_buf.as_slice()
+        };
         let audio_mid_idx = params.m.floor() as i32;
 
         let mut pipeline = match entry.pipeline.lock() {
