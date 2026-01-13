@@ -232,6 +232,7 @@ fn main() -> anyhow::Result<()> {
         }
         match &r.input.driver {
             config::InputDriver::Stdin { .. } => {}
+            config::InputDriver::Fifo { .. } => {}
             config::InputDriver::SoapySdr(_) => {
                 if !cfg!(feature = "soapysdr") {
                     anyhow::bail!(

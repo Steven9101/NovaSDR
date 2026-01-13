@@ -104,3 +104,27 @@ fn json_load_rejects_multiple_stdin_receivers() {
         "unexpected error: {msg}"
     );
 }
+
+#[test]
+fn json_load_fifo_input() {
+    let config = write_temp(
+        "config.json",
+        r#"{
+  "server": { "port": 9002, "host": "0.0.0.0", "html_root": "frontend/dist/", "otherusers": 1, "threads": 1 },
+  "websdr": { "name": "NovaSDR" },
+  "limits": { "audio": 1, "waterfall": 1, "events": 1 },
+  "active_receiver_id": "rx0"
+}"#,
+    );
+    let receivers = write_temp(
+        "receivers.json",
+        r#"{
+  "receivers": [
+    { "id": "rx0", "input": { "sps": 2048000, "frequency": 100900000, "signal": "iq", "driver": { "kind": "fifo", "format": "cs16", "path": "somefile" } } }
+  ]
+}"#,
+    );
+
+    let cfg = load_from_files(&config, &receivers).unwrap();
+    assert_eq!(cfg.active_receiver_id, "rx0");
+}

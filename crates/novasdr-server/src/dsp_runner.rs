@@ -87,10 +87,7 @@ fn run_dsp_loop(
 ) -> anyhow::Result<()> {
     let stop_requested = Arc::new(AtomicBool::new(false));
     let (input, input_name) = crate::input::open(&receiver.receiver, stop_requested.clone())?;
-    let sample_format = match &receiver.receiver.input.driver {
-        novasdr_core::config::InputDriver::Stdin { format } => *format,
-        novasdr_core::config::InputDriver::SoapySdr(d) => d.format,
-    };
+    let sample_format = receiver.receiver.input.driver.get_sample_format();
     tracing::info!(
         receiver_id = %receiver.receiver.id,
         input = input_name,

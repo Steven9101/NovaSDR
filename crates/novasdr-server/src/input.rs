@@ -10,14 +10,25 @@ pub fn open(
     receiver: &ReceiverConfig,
     stop_requested: Arc<AtomicBool>,
 ) -> anyhow::Result<(Box<dyn Read + Send>, &'static str)> {
+    let driver_name = receiver.input.driver.as_str();
     match &receiver.input.driver {
-        InputDriver::Stdin { .. } => Ok((Box::new(std::io::stdin()), "stdin")),
+        InputDriver::Stdin { .. } => Ok((Box::new(std::io::stdin()), driver_name)),
+        InputDriver::Fifo {
+            format: _format,
+            path,
+        } => Ok((
+            Box::new(
+                std::fs::File::open(path)
+                    .map_err(|e| anyhow::anyhow!("Error open file '{path}': {e}"))?,
+            ),
+            driver_name,
+        )),
         InputDriver::SoapySdr(driver) => {
             #[cfg(feature = "soapysdr")]
             {
                 Ok((
                     soapysdr::open(driver, &receiver.input, stop_requested)?,
-                    "soapysdr",
+                    driver_name,
                 ))
             }
 

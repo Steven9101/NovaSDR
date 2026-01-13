@@ -1197,14 +1197,18 @@ fn edit_receiver(receiver: &mut Value) -> anyhow::Result<()> {
 
     let kind = Select::new(
         "Input driver",
-        vec!["stdin".to_string(), "soapysdr".to_string()],
+        vec![
+            "stdin".to_string(),
+            "fifo".to_string(),
+            "soapysdr".to_string(),
+        ],
     )
     .prompt()
     .context("prompt driver kind")?;
     driver.insert("kind".to_string(), json!(kind.clone()));
 
     match kind.as_str() {
-        "stdin" => {
+        "stdin" | "fifo" => {
             driver.remove("device");
             driver.remove("channel");
             driver.remove("antenna");
@@ -1227,8 +1231,22 @@ fn edit_receiver(receiver: &mut Value) -> anyhow::Result<()> {
                 ],
             )
             .prompt()
-            .context("prompt stdin format")?;
+            .context("prompt sample format")?;
             driver.insert("format".to_string(), json!(format));
+
+            if kind == "fifo" {
+                let path = Text::new("File path")
+                    .with_default(
+                        driver
+                            .get("path")
+                            .and_then(Value::as_str)
+                            .unwrap_or("/tmp/fifo1"),
+                    )
+                    .prompt()
+                    .context("prompt fifo file path")?;
+
+                driver.insert("path".to_string(), json!(path));
+            }
         }
         "soapysdr" => {
             if !cfg!(feature = "soapysdr") {
