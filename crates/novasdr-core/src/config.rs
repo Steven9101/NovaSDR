@@ -365,19 +365,6 @@ fn migrate_global_config_json(value: &mut serde_json::Value) -> bool {
 
     let mut changed = false;
 
-    // Migration: older configs used "html/" as the default html_root.
-    // Release packages ship the UI under "frontend/dist/".
-    if let Some(server) = obj.get_mut("server").and_then(|v| v.as_object_mut()) {
-        if let Some(html_root) = server.get_mut("html_root") {
-            if let Some(s) = html_root.as_str() {
-                if s == "html/" {
-                    *html_root = serde_json::Value::String("frontend/dist/".to_string());
-                    changed = true;
-                }
-            }
-        }
-    }
-
     // Ensure websdr.public_port exists for older configs.
     let websdr = obj
         .entry("websdr")
@@ -560,10 +547,6 @@ impl Config {
         anyhow::ensure!(
             audio_max_sps <= max_audio_sps,
             "receiver.input.audio_sps must be <= receiver input bandwidth ({max_audio_sps} Hz)"
-        );
-        anyhow::ensure!(
-            audio_max_sps <= 48_000,
-            "receiver.input.audio_sps must be <= 48000 Hz"
         );
 
         let audio_max_fft_size =

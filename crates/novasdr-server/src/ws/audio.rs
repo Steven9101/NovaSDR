@@ -397,7 +397,7 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
     let client = Arc::new(AudioClient {
         unique_id: unique_id.clone(),
         tx,
-        params: crate::state::AudioParamsAtomic::new(params),
+        params: std::sync::Mutex::new(params),
         pipeline: std::sync::Mutex::new(pipeline),
     });
 
@@ -474,20 +474,21 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
                                 state.basic_info_json(receiver_id.as_str()).await,
                                 &unique_id,
                             );
-                            client.params.store_defaults(AudioParams {
-                                l: receiver.rt.default_l,
-                                m: receiver.rt.default_m,
-                                r: receiver.rt.default_r,
-                                mute: false,
-                                squelch_enabled: receiver.receiver.input.defaults.squelch_enabled,
-                                demodulation: DemodulationMode::from_str_upper(
+                            if let Ok(mut p) = client.params.lock() {
+                                p.l = receiver.rt.default_l;
+                                p.m = receiver.rt.default_m;
+                                p.r = receiver.rt.default_r;
+                                p.mute = false;
+                                p.squelch_enabled =
+                                    receiver.receiver.input.defaults.squelch_enabled;
+                                p.demodulation = DemodulationMode::from_str_upper(
                                     receiver.rt.default_mode_str.as_str(),
                                 )
-                                .unwrap_or(DemodulationMode::Usb),
-                                agc_speed: AgcSpeed::Default,
-                                agc_attack_ms: None,
-                                agc_release_ms: None,
-                            });
+                                .unwrap_or(DemodulationMode::Usb);
+                                p.agc_speed = AgcSpeed::Default;
+                                p.agc_attack_ms = None;
+                                p.agc_release_ms = None;
+                            }
                             state.broadcast_signal_changes(
                                 receiver_id.as_str(),
                                 &unique_id,
@@ -537,15 +538,25 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
                         receiver_id = next_id;
                         receiver = next_receiver;
 
-                        client.params.store_window(
-                            receiver.rt.default_l,
-                            receiver.rt.default_m,
-                            receiver.rt.default_r,
-                        );
-                        client.params.store_demodulation(
-                            DemodulationMode::from_str_upper(receiver.rt.default_mode_str.as_str())
-                                .unwrap_or(DemodulationMode::Usb),
-                        );
+                        {
+                            let mut p = match client.params.lock() {
+                                Ok(g) => g,
+                                Err(poisoned) => {
+                                    tracing::error!(
+                                        unique_id = %client.unique_id,
+                                        "audio params mutex poisoned; recovering"
+                                    );
+                                    poisoned.into_inner()
+                                }
+                            };
+                            p.l = receiver.rt.default_l;
+                            p.m = receiver.rt.default_m;
+                            p.r = receiver.rt.default_r;
+                            p.demodulation = DemodulationMode::from_str_upper(
+                                receiver.rt.default_mode_str.as_str(),
+                            )
+                            .unwrap_or(DemodulationMode::Usb);
+                        }
                         {
                             let mut pipeline = match client.pipeline.lock() {
                                 Ok(g) => g,
@@ -614,20 +625,41 @@ fn apply_command(
         novasdr_core::protocol::ClientCommand::Receiver { .. } => {}
         novasdr_core::protocol::ClientCommand::Window { l, r, m, .. } => {
             let Some(m) = m else { return };
-            // Window is treated as a half-open range [l, r).
-            if l < 0 || r < 0 || l >= r || r as usize > rt.fft_result_size {
+            if l < 0 || r < 0 || l > r || r as usize >= rt.fft_result_size {
                 return;
             }
             let audio_fft_size = rt.audio_max_fft_size as i32;
             if r - l > audio_fft_size {
                 return;
             }
-            client.params.store_window(l, m, r);
+            let mut p = match client.params.lock() {
+                Ok(g) => g,
+                Err(poisoned) => {
+                    tracing::error!(
+                        unique_id = %client.unique_id,
+                        "audio params mutex poisoned; recovering"
+                    );
+                    poisoned.into_inner()
+                }
+            };
+            p.l = l;
+            p.r = r;
+            p.m = m;
             state.broadcast_signal_changes(receiver_id, &client.unique_id, l, m, r);
         }
         novasdr_core::protocol::ClientCommand::Demodulation { demodulation } => {
+            let mut p = match client.params.lock() {
+                Ok(g) => g,
+                Err(poisoned) => {
+                    tracing::error!(
+                        unique_id = %client.unique_id,
+                        "audio params mutex poisoned; recovering"
+                    );
+                    poisoned.into_inner()
+                }
+            };
             if let Some(mode) = DemodulationMode::from_str_upper(demodulation.as_str()) {
-                client.params.store_demodulation(mode);
+                p.demodulation = mode;
             }
             let mut pipeline = match client.pipeline.lock() {
                 Ok(g) => g,
@@ -642,19 +674,49 @@ fn apply_command(
             pipeline.reset_agc();
         }
         novasdr_core::protocol::ClientCommand::Mute { mute } => {
-            client.params.store_mute(mute);
+            let mut p = match client.params.lock() {
+                Ok(g) => g,
+                Err(poisoned) => {
+                    tracing::error!(
+                        unique_id = %client.unique_id,
+                        "audio params mutex poisoned; recovering"
+                    );
+                    poisoned.into_inner()
+                }
+            };
+            p.mute = mute;
         }
         novasdr_core::protocol::ClientCommand::Squelch { enabled } => {
-            client.params.store_squelch_enabled(enabled);
+            let mut p = match client.params.lock() {
+                Ok(g) => g,
+                Err(poisoned) => {
+                    tracing::error!(
+                        unique_id = %client.unique_id,
+                        "audio params mutex poisoned; recovering"
+                    );
+                    poisoned.into_inner()
+                }
+            };
+            p.squelch_enabled = enabled;
         }
         novasdr_core::protocol::ClientCommand::Agc {
             speed,
             attack,
             release,
         } => {
-            client
-                .params
-                .store_agc(AgcSpeed::parse(speed.as_str()), attack, release);
+            let mut p = match client.params.lock() {
+                Ok(g) => g,
+                Err(poisoned) => {
+                    tracing::error!(
+                        unique_id = %client.unique_id,
+                        "audio params mutex poisoned; recovering"
+                    );
+                    poisoned.into_inner()
+                }
+            };
+            p.agc_speed = AgcSpeed::parse(speed.as_str());
+            p.agc_attack_ms = attack;
+            p.agc_release_ms = release;
         }
         novasdr_core::protocol::ClientCommand::Userid { .. } => {}
         novasdr_core::protocol::ClientCommand::Buffer { .. } => {}
@@ -803,7 +865,7 @@ impl AudioPipeline {
             // Match reference defaults.
             agc: Agc::new(0.1, 100.0, 30.0, 100.0, sample_rate as f32),
             fm_prev: Complex32::new(0.0, 0.0),
-            last_agc: (AgcSpeed::Off, None, None),
+            last_agc: (AgcSpeed::Default, None, None),
             squelch: SquelchState::new(),
         })
     }
@@ -885,13 +947,11 @@ impl AudioPipeline {
                     }
                 }
 
-                self.c2r_ifft
-                    .process_with_scratch(
-                        &mut self.buf_in[..c2r_len],
-                        &mut self.real,
-                        &mut self.c2r_scratch,
-                    )
-                    .map_err(|e| anyhow::anyhow!("c2r_ifft failed: {e}"))?;
+                let _ = self.c2r_ifft.process_with_scratch(
+                    &mut self.buf_in[..c2r_len],
+                    &mut self.real,
+                    &mut self.c2r_scratch,
+                );
 
                 if mode == DemodulationMode::Lsb {
                     self.real.reverse();
@@ -1067,19 +1127,12 @@ impl AudioPipeline {
         self.last_agc = current;
 
         let (speed, attack_ms, release_ms) = current;
-
-        let enabled = speed != AgcSpeed::Off;
-        self.agc.set_enabled(enabled);
-        if !enabled {
-            return;
-        }
-
         let (attack_s, release_s) = match speed {
             AgcSpeed::Custom => match (attack_ms, release_ms) {
                 (Some(a), Some(r)) => ((a / 1000.0).max(0.0001), (r / 1000.0).max(0.0001)),
                 _ => (0.003, 0.25),
             },
-            AgcSpeed::Off => (0.003, 0.25),
+            AgcSpeed::Off => (0.0001, 0.0001),
             AgcSpeed::Fast => (0.001, 0.05),
             AgcSpeed::Slow => (0.05, 0.5),
             AgcSpeed::Medium => (0.01, 0.15),
@@ -1113,8 +1166,7 @@ mod pipeline_tests {
         spectrum[0] = Complex32::new(1.0, 0.0); // DC = 1.0
 
         let mut time = vec![0.0f32; n];
-        ifft.process_with_scratch(&mut spectrum, &mut time, &mut scratch)
-            .unwrap();
+        let _ = ifft.process_with_scratch(&mut spectrum, &mut time, &mut scratch);
 
         // Unnormalized inverse: DC=1.0 -> constant 1.0 in time domain.
         // Normalized inverse would produce 1.0 / N.

@@ -442,49 +442,39 @@ pub fn quantize_and_downsample_cpu(
     size_log2: i32,
 ) -> (Vec<i8>, Vec<usize>) {
     let n = spectrum.len();
-
-    // Compute total output length upfront to avoid repeated growth.
-    let mut total_len = 0usize;
-    let mut level_len = n;
-    for _ in 0..levels {
-        total_len += level_len;
-        level_len /= 2;
-        if level_len == 0 {
-            break;
-        }
-    }
-
     let mut power = vec![0.0f32; n];
-    let mut out = vec![0i8; total_len];
+    let mut quantized_base = vec![0i8; n];
 
     for i in 0..n {
         let src = (i + base_idx) % n;
         let v = spectrum[src] / normalize;
         let p = v.re.mul_add(v.re, v.im * v.im).max(0.0);
         power[i] = p;
-        out[i] = quantize_power(p, size_log2);
+        quantized_base[i] = quantize_power(p, size_log2);
     }
 
     let mut offsets = Vec::with_capacity(levels);
     offsets.push(0usize);
+    let mut out = Vec::with_capacity(n * 2);
+    out.extend_from_slice(&quantized_base);
 
+    let mut cur_power = power;
     let mut cur_len = n;
     let mut cur_offset = n;
 
     for level in 1..levels {
         let next_len = cur_len / 2;
-        if next_len == 0 {
-            break;
-        }
         offsets.push(cur_offset);
-
+        let mut next_power = vec![0.0f32; next_len];
+        let mut next_quant = vec![0i8; next_len];
         let power_offset = size_log2 - (level as i32) - 1;
         for i in 0..next_len {
-            let p = power[i * 2] + power[i * 2 + 1];
-            power[i] = p;
-            out[cur_offset + i] = quantize_power(p, power_offset);
+            let p = cur_power[i * 2] + cur_power[i * 2 + 1];
+            next_power[i] = p;
+            next_quant[i] = quantize_power(p, power_offset);
         }
-
+        out.extend_from_slice(&next_quant);
+        cur_power = next_power;
         cur_len = next_len;
         cur_offset += next_len;
     }
