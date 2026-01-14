@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/Steven9101/NovaSDR/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-GPL--3.0--only-blue"></a>
   <img alt="Backend" src="https://img.shields.io/badge/backend-Rust-orange">
-  <img alt="Audio" src="https://img.shields.io/badge/audio-FLAC-informational">
+  <img alt="Audio" src="https://img.shields.io/badge/audio-ADPCM-informational">
   <img alt="Waterfall" src="https://img.shields.io/badge/waterfall-Zstd-informational">
   <img alt="Transport" src="https://img.shields.io/badge/transport-WebSocket-informational">
 </p>

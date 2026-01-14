@@ -86,12 +86,12 @@ fn build_payload<'a>(state: &'a AppState, id: &'a str) -> SdrListUpdate<'a> {
         name: cfg.websdr.name.as_str(),
         antenna: cfg.websdr.antenna.as_str(),
         bandwidth,
-        users: state.event_clients.len(),
+        users: state.total_audio_clients(),
         center_frequency,
         grid_locator: cfg.websdr.grid_locator.as_str(),
         hostname: cfg.websdr.hostname.as_str(),
         max_users: cfg.limits.audio,
-        port: cfg.server.port,
+        port: cfg.websdr.public_port.unwrap_or(cfg.server.port),
     }
 }
 

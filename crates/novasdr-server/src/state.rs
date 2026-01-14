@@ -26,6 +26,58 @@ const TEXT_QUEUE_CAPACITY: usize = 64;
 
 pub type ClientId = u64;
 
+#[derive(Debug, Clone, PartialEq, serde::Deserialize, Default)]
+pub struct HeaderPanelOverlay {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub about: String,
+
+    #[serde(default)]
+    pub donation_enabled: bool,
+    #[serde(default)]
+    pub donation_url: String,
+    #[serde(default)]
+    pub donation_label: String,
+
+    #[serde(default)]
+    pub items: Vec<HeaderPanelItem>,
+    #[serde(default)]
+    pub images: Vec<String>,
+    #[serde(default)]
+    pub widgets: HeaderPanelWidgets,
+    #[serde(default)]
+    pub lookups: HeaderPanelLookups,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Deserialize, Default)]
+pub struct HeaderPanelItem {
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub value: String,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Deserialize, Default)]
+pub struct HeaderPanelWidgets {
+    #[serde(default)]
+    pub hamqsl: bool,
+    #[serde(default)]
+    pub blitzortung: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Deserialize, Default)]
+pub struct HeaderPanelLookups {
+    #[serde(default)]
+    pub callsign: bool,
+    #[serde(default)]
+    pub mwlist: bool,
+    #[serde(default)]
+    pub shortwave_info: bool,
+}
+
 pub struct ReceiverState {
     pub receiver: config::ReceiverConfig,
     pub rt: Arc<config::Runtime>,
@@ -58,6 +110,7 @@ pub struct AppState {
     pub active_receiver: Arc<ReceiverState>,
     pub markers: Arc<RwLock<serde_json::Value>>,
     pub bands: Arc<RwLock<serde_json::Value>>,
+    pub header_panel: Arc<RwLock<HeaderPanelOverlay>>,
 
     pub event_clients: DashMap<ClientId, mpsc::Sender<Arc<str>>>,
     pub chat_clients: DashMap<ClientId, mpsc::Sender<Arc<str>>>,
@@ -97,6 +150,7 @@ impl AppState {
             active_receiver,
             markers: Arc::new(RwLock::new(serde_json::Value::Null)),
             bands: Arc::new(RwLock::new(serde_json::Value::Null)),
+            header_panel: Arc::new(RwLock::new(HeaderPanelOverlay::default())),
             event_clients: DashMap::new(),
             chat_clients: DashMap::new(),
             chat_history: tokio::sync::Mutex::new(load_chat_history()),
@@ -198,6 +252,7 @@ impl AppState {
             "ssb_lowcut_hz": ssb_lowcut_hz,
             "ssb_highcut_hz": ssb_highcut_hz,
             "squelch_enabled": receiver.receiver.input.defaults.squelch_enabled,
+            "colormap": receiver.receiver.input.defaults.colormap,
         });
 
         let out = json!({
@@ -433,6 +488,38 @@ pub struct WaterfallParams {
 
 pub async fn server_info(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let cfg = &state.cfg;
+    let header = state.header_panel.read().await.clone();
+
+    let normalize_image_ref = |raw: &str| -> Option<String> {
+        let s = raw.trim();
+        if s.is_empty() {
+            return None;
+        }
+        if s.contains("..") || s.contains('\\') {
+            return None;
+        }
+        if s.contains("://") {
+            return Some(s.to_string());
+        }
+        if s.starts_with('/') {
+            return Some(s.to_string());
+        }
+        Some(format!("/{s}"))
+    };
+
+    let images: Vec<String> = header
+        .images
+        .iter()
+        .filter_map(|s| normalize_image_ref(s))
+        .take(3)
+        .collect();
+
+    let items: Vec<_> = header
+        .items
+        .iter()
+        .map(|i| json!({ "label": i.label, "value": i.value }))
+        .collect();
+
     Json(json!({
         "serverName": cfg.websdr.name,
         "location": cfg.websdr.grid_locator,
@@ -440,6 +527,25 @@ pub async fn server_info(State(state): State<Arc<AppState>>) -> impl IntoRespons
         "email": cfg.websdr.email,
         "chatEnabled": cfg.websdr.chat_enabled,
         "version": env!("CARGO_PKG_VERSION"),
+        "headerPanel": {
+            "enabled": header.enabled,
+            "title": header.title,
+            "about": header.about,
+            "donationEnabled": header.donation_enabled,
+            "donationUrl": header.donation_url,
+            "donationLabel": header.donation_label,
+            "items": items,
+            "images": images,
+            "widgets": {
+                "hamqsl": header.widgets.hamqsl,
+                "blitzortung": header.widgets.blitzortung,
+            },
+            "lookups": {
+                "callsign": header.lookups.callsign,
+                "mwlist": header.lookups.mwlist,
+                "shortwaveInfo": header.lookups.shortwave_info,
+            }
+        }
     }))
 }
 
@@ -449,10 +555,6 @@ pub async fn receivers_info(State(state): State<Arc<AppState>>) -> impl IntoResp
         .receivers
         .iter()
         .map(|r| {
-            let driver = match &r.input.driver {
-                config::InputDriver::Stdin { .. } => "stdin",
-                config::InputDriver::SoapySdr(_) => "soapysdr",
-            };
             let rt = state
                 .receiver_state(r.id.as_str())
                 .map(|rx| rx.rt.as_ref())
@@ -460,7 +562,7 @@ pub async fn receivers_info(State(state): State<Arc<AppState>>) -> impl IntoResp
             json!({
                 "id": r.id,
                 "name": r.name,
-                "driver": driver,
+                "driver": r.input.driver.as_str(),
                 "min_hz": rt.map(|(min, _)| min),
                 "max_hz": rt.map(|(_, max)| max),
             })
@@ -477,6 +579,11 @@ async fn maybe_load_json(path: &Path) -> Option<serde_json::Value> {
     serde_json::from_str::<serde_json::Value>(&raw).ok()
 }
 
+async fn maybe_load_header_panel(path: &Path) -> Option<HeaderPanelOverlay> {
+    let raw = tokio::fs::read_to_string(path).await.ok()?;
+    serde_json::from_str::<HeaderPanelOverlay>(&raw).ok()
+}
+
 pub async fn load_overlays_once(state: Arc<AppState>, overlays_dir: std::path::PathBuf) {
     let markers_path = overlays_dir.join("markers.json");
     if let Some(v) = maybe_load_json(&markers_path).await {
@@ -487,6 +594,12 @@ pub async fn load_overlays_once(state: Arc<AppState>, overlays_dir: std::path::P
     let bands_path = overlays_dir.join("bands.json");
     if let Some(v) = maybe_load_json(&bands_path).await {
         let mut cur = state.bands.write().await;
+        *cur = v;
+    }
+
+    let header_path = overlays_dir.join("header_panel.json");
+    if let Some(v) = maybe_load_header_panel(&header_path).await {
+        let mut cur = state.header_panel.write().await;
         *cur = v;
     }
 }
@@ -512,6 +625,21 @@ pub fn spawn_bands_watcher(state: Arc<AppState>, overlays_dir: std::path::PathBu
             let path = overlays_dir.join("bands.json");
             if let Some(v) = maybe_load_json(&path).await {
                 let mut cur = state.bands.write().await;
+                if *cur != v {
+                    *cur = v;
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+        }
+    });
+}
+
+pub fn spawn_header_panel_watcher(state: Arc<AppState>, overlays_dir: std::path::PathBuf) {
+    tokio::spawn(async move {
+        loop {
+            let path = overlays_dir.join("header_panel.json");
+            if let Some(v) = maybe_load_header_panel(&path).await {
+                let mut cur = state.header_panel.write().await;
                 if *cur != v {
                     *cur = v;
                 }

@@ -16,7 +16,7 @@ fn base_config(signal: SignalType) -> Config {
             audio_sps: 12_000,
             waterfall_size: 1024,
             waterfall_compression: WaterfallCompression::Zstd,
-            audio_compression: AudioCompression::Flac,
+            audio_compression: AudioCompression::Adpcm,
             smeter_offset: 0,
             accelerator: novasdr_core::config::Accelerator::None,
             driver: InputDriver::Stdin {
@@ -28,6 +28,7 @@ fn base_config(signal: SignalType) -> Config {
                 ssb_lowcut_hz: None,
                 ssb_highcut_hz: None,
                 squelch_enabled: false,
+                colormap: None,
             },
         },
     };

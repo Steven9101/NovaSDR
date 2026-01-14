@@ -227,10 +227,7 @@ impl<T: soapysdr::StreamSample + Copy + Default> SoapyRead<T> {
             if self.stop_requested.load(Ordering::Relaxed)
                 || crate::shutdown::is_shutdown_requested()
             {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Interrupted,
-                    "shutdown",
-                ));
+                return Err(std::io::Error::new(std::io::ErrorKind::Other, "shutdown"));
             }
             let mut bufs = [self.buf.as_mut_slice()];
             // Long timeout (1 second) to avoid busy-spinning; SoapySDR returns early when data arrives.

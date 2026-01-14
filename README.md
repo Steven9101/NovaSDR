@@ -46,7 +46,8 @@ See `docs/INSTALL.md` for details.
 NovaSDR runs either with:
 
 - **SoapySDR** (recommended; direct hardware access), or
-- **stdin** (pipe raw samples from an external capture tool).
+- **stdin** (pipe raw samples from an external capture tool as stdin), or
+- **fifo** (pipe raw samples from an external capture tool as a file).
 
 The sections below are copy/paste one-liners for a full source build (Rust + frontend + SoapySDR + OpenCL + clFFT).
 

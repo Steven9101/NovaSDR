@@ -10,6 +10,7 @@ pub struct OverlayPaths {
     pub dir: PathBuf,
     pub markers: PathBuf,
     pub bands: PathBuf,
+    pub header_panel: PathBuf,
 }
 
 pub fn overlay_paths_for_config(config_path: &Path) -> OverlayPaths {
@@ -21,6 +22,7 @@ pub fn overlay_paths_for_config(config_path: &Path) -> OverlayPaths {
     OverlayPaths {
         markers: dir.join("markers.json"),
         bands: dir.join("bands.json"),
+        header_panel: dir.join("header_panel.json"),
         dir,
     }
 }
@@ -39,6 +41,9 @@ pub fn ensure_default_overlays(config_path: &Path) -> anyhow::Result<OverlayPath
     )
     .context("ensure overlays bands.json")?;
 
+    write_json_if_missing(&paths.header_panel, &default_header_panel_value())
+        .context("ensure overlays header_panel.json")?;
+
     Ok(paths)
 }
 
@@ -54,6 +59,32 @@ pub fn default_bands_value() -> anyhow::Result<serde_json::Value> {
         .and_then(|b| b.as_array())
         .ok_or_else(|| anyhow::anyhow!("default bands json: expected {{\"bands\": [...]}}"))?;
     Ok(v)
+}
+
+pub fn default_header_panel_value() -> serde_json::Value {
+    json!({
+        "enabled": false,
+        "title": "About this receiver",
+        "about": "Short operator-provided description.\nNewlines are preserved.",
+        "donation_enabled": false,
+        "donation_url": "https://example.com/donate",
+        "donation_label": "Support this SDR",
+        "items": [
+            { "label": "Receiver", "value": "" },
+            { "label": "Antenna", "value": "" },
+            { "label": "Location", "value": "" }
+        ],
+        "images": ["station-1.png", "station-2.png", "station-3.png"],
+        "widgets": {
+            "hamqsl": false,
+            "blitzortung": false
+        },
+        "lookups": {
+            "callsign": false,
+            "mwlist": false,
+            "shortwave_info": false
+        }
+    })
 }
 
 fn write_json_if_missing(path: &Path, value: &serde_json::Value) -> anyhow::Result<()> {
@@ -100,6 +131,10 @@ mod tests {
         assert!(paths.dir.ends_with("overlays"));
         assert!(paths.markers.exists(), "markers.json should exist");
         assert!(paths.bands.exists(), "bands.json should exist");
+        assert!(
+            paths.header_panel.exists(),
+            "header_panel.json should exist"
+        );
 
         let markers: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&paths.markers).unwrap()).unwrap();

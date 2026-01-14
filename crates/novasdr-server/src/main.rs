@@ -167,7 +167,18 @@ fn main() -> anyhow::Result<()> {
     }
 
     let cfg = match config::load_from_files(&config_path, &receivers_path) {
-        Ok(cfg) => Arc::new(cfg),
+        Ok(mut cfg) => {
+            for r in cfg.receivers.iter_mut() {
+                if r.input.audio_compression == config::AudioCompression::Flac {
+                    tracing::warn!(
+                        receiver_id = %r.id,
+                        "audio_compression = \"flac\" was removed; treating it as \"adpcm\""
+                    );
+                    r.input.audio_compression = config::AudioCompression::Adpcm;
+                }
+            }
+            Arc::new(cfg)
+        }
         Err(e) => {
             let interactive = std::io::stdin().is_terminal();
             if interactive && setup::ask_to_run_setup_for_invalid_config(&args, &e)? {
@@ -219,14 +230,9 @@ fn main() -> anyhow::Result<()> {
                 r.id
             );
         }
-        if r.input.audio_compression != config::AudioCompression::Flac {
-            anyhow::bail!(
-                "receiver {}: only audio_compression = \"flac\" is supported",
-                r.id
-            );
-        }
         match &r.input.driver {
             config::InputDriver::Stdin { .. } => {}
+            config::InputDriver::Fifo { .. } => {}
             config::InputDriver::SoapySdr(_) => {
                 if !cfg!(feature = "soapysdr") {
                     anyhow::bail!(
@@ -300,7 +306,8 @@ fn main() -> anyhow::Result<()> {
                 overlays::ensure_default_overlays(&config_path).context("ensure overlays")?;
             state::load_overlays_once(state.clone(), overlays.dir.clone()).await;
             state::spawn_marker_watcher(state.clone(), overlays.dir.clone());
-            state::spawn_bands_watcher(state.clone(), overlays.dir);
+            state::spawn_bands_watcher(state.clone(), overlays.dir.clone());
+            state::spawn_header_panel_watcher(state.clone(), overlays.dir);
             registration::spawn(state.clone());
             update_check::spawn(state.clone());
             dsp_runner::start(state.clone()).context("start DSP runner")?;

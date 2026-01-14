@@ -1,0 +1,27 @@
+{
+  "enabled": false,
+  "title": "About this receiver",
+  "about": "Short operator-provided description.\nNewlines are preserved.",
+
+  "donation_enabled": false,
+  "donation_url": "https://example.com/donate",
+  "donation_label": "Support this SDR",
+
+  "items": [
+    { "label": "Receiver", "value": "" },
+    { "label": "Antenna", "value": "" },
+    { "label": "Location", "value": "" }
+  ],
+
+  "images": ["station-1.png", "station-2.png", "station-3.png"],
+
+  "widgets": {
+    "hamqsl": false,
+    "blitzortung": false
+  },
+  "lookups": {
+    "callsign": false,
+    "mwlist": false,
+    "shortwave_info": false
+  }
+}

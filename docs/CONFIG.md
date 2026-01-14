@@ -20,7 +20,7 @@ You can edit/reset these overlays from the setup wizard (`setup` / `configure`),
 
 The Rust backend supports:
 - `receivers[].input.waterfall_compression = "zstd"`
-- `receivers[].input.audio_compression = "flac"`
+- `receivers[].input.audio_compression = "adpcm"`
 - `receivers[].input.accelerator = "none"` (or `clfft` with the `clfft` feature; or `vkfft` with the `vkfft` feature)
 
 ## Online listing registration
@@ -33,6 +33,8 @@ Configuration:
 - `websdr.register_url = "https://sdr-list.xyz/api/update_websdr"` (default)
 
 The registration payload includes server name, antenna, grid locator, hostname, port, user count, bandwidth and center frequency.
+
+If NovaSDR is running behind a reverse proxy (for example terminating HTTPS on port 443), set `websdr.public_port` so SDR lists show the correct public port.
 
 ## Minimal working config
 
@@ -64,7 +66,7 @@ The registration payload includes server name, antenna, grid locator, hostname, 
         "audio_sps": 12000,
         "waterfall_size": 1024,
         "waterfall_compression": "zstd",
-        "audio_compression": "flac",
+        "audio_compression": "adpcm",
         "accelerator": "none",
         "smeter_offset": 0,
         "driver": { "kind": "stdin", "format": "u8" },
@@ -97,12 +99,53 @@ Some runtime values are derived from the configuration:
 
 The server clamps the default audio window (`receivers[].input.defaults`) to fit into `audio_max_fft_size` so audio always starts.
 
+## Optional: Header info panel
+
+NovaSDR can show an operator-configured expandable panel in the UI header (receiver details + optional images/widgets).
+
+Configure it via an overlay file next to `config/config.json`:
+
+- File: `config/overlays/header_panel.json`
+- It is created automatically on startup if missing.
+
+Images should be placed in the static UI root (`server.html_root`, typically `frontend/dist/`).
+If the file exists as `frontend/dist/test.png`, reference it as `"test.png"` in the config.
+
+Example `config/overlays/header_panel.json`:
+
+```json
+{
+  "enabled": true,
+  "title": "About this receiver",
+  "about": "Short description shown in the header.\nNewlines are preserved.",
+
+  "donation_enabled": true,
+  "donation_url": "https://example.com/donate",
+  "donation_label": "Support this SDR",
+
+  "items": [
+    { "label": "Receiver", "value": "My SDR" },
+    { "label": "Antenna", "value": "Dipole" }
+  ],
+
+  "images": ["station-1.png", "station-2.png"],
+  "widgets": {
+    "hamqsl": true,
+    "blitzortung": true
+  },
+  "lookups": {
+    "callsign": true,
+    "mwlist": true,
+    "shortwave_info": true
+  }
+}
+```
 ## Optional: USB/LSB default passband
 
 By default, NovaSDR uses:
 
-- `USB`: `+300..+3000 Hz`
-- `LSB`: `-3000..-300 Hz`
+- `USB`: `+100..+2800 Hz`
+- `LSB`: `-2800..-100 Hz`
 
 To override that per receiver, add `ssb_lowcut_hz` / `ssb_highcut_hz` under `receivers[].input.defaults`:
 

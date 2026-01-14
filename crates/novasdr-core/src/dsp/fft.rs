@@ -302,18 +302,18 @@ impl FftEngine {
         let size_log2 = (n.ilog2() as i32) + self.settings.brightness_offset;
         let base_idx = (n / 2) + 1;
 
-        // Prefer GPU windowing + GPU waterfall quantization when using clFFT for complex input.
-        // If kernels fail or produce invalid power, fall back to the CPU window/quantize path.
+        // Prefer GPU windowing + FFT for complex input. If kernels fail, fall back to the CPU path.
         #[cfg(feature = "clfft")]
         {
-            if include_waterfall {
-                if let ComplexFft::Clfft(fft) = &mut self.complex_fft {
-                    // Assemble contiguous complex frame (unwindowed) for upload.
-                    self.complex_frame[..half].copy_from_slice(&self.complex_half_a);
-                    self.complex_frame[half..].copy_from_slice(&self.complex_half_b);
+            if let ComplexFft::Clfft(fft) = &mut self.complex_fft {
+                // Assemble contiguous complex frame (unwindowed) for upload.
+                self.complex_frame[..half].copy_from_slice(&self.complex_half_a);
+                self.complex_frame[half..].copy_from_slice(&self.complex_half_b);
 
-                    let gpu_res: anyhow::Result<FftResult> = (|| {
-                        fft.window_and_process_inplace(&self.complex_frame)?;
+                let gpu_res: anyhow::Result<FftResult> = (|| {
+                    fft.window_and_process_inplace(&self.complex_frame)?;
+
+                    let (quantized_concat, quantized_level_offsets) = if include_waterfall {
                         let (q, o) = fft.quantize_and_downsample(
                             base_idx,
                             self.settings.downsample_levels,
@@ -326,38 +326,45 @@ impl FftEngine {
                             anyhow::bail!("clFFT produced invalid spectrum (max_power={max_p})");
                         }
 
-                        fft.read_fft_output(&mut self.complex_frame)?;
-                        Ok(FftResult {
-                            normalize,
-                            quantized_concat: Some(q.into()),
-                            quantized_level_offsets: Some(o.into()),
-                        })
-                    })();
+                        (Some(q.into()), Some(o.into()))
+                    } else {
+                        (None, None)
+                    };
 
-                    match gpu_res {
-                        Ok(res) => return Ok(res),
-                        Err(e) => {
-                            static WARNED: AtomicBool = AtomicBool::new(false);
-                            if !WARNED.swap(true, Ordering::Relaxed) {
-                                tracing::warn!(error = %e, "clFFT complex GPU path failed; falling back to CPU");
-                            }
+                    fft.read_fft_output(&mut self.complex_frame)?;
+                    Ok(FftResult {
+                        normalize,
+                        quantized_concat,
+                        quantized_level_offsets,
+                    })
+                })();
+
+                match gpu_res {
+                    Ok(res) => return Ok(res),
+                    Err(e) => {
+                        static WARNED: AtomicBool = AtomicBool::new(false);
+                        if !WARNED.swap(true, Ordering::Relaxed) {
+                            tracing::warn!(
+                                error = %e,
+                                "clFFT complex GPU path failed; falling back to CPU"
+                            );
                         }
                     }
                 }
             }
         }
 
-        // Prefer GPU windowing + GPU waterfall quantization when using VkFFT for complex input.
-        // If kernels fail or produce invalid power, fall back to the CPU window/quantize path.
+        // Prefer GPU windowing + FFT for complex input. If kernels fail, fall back to the CPU path.
         #[cfg(feature = "vkfft")]
         {
-            if include_waterfall {
-                if let ComplexFft::Vkfft(fft) = &mut self.complex_fft {
-                    self.complex_frame[..half].copy_from_slice(&self.complex_half_a);
-                    self.complex_frame[half..].copy_from_slice(&self.complex_half_b);
+            if let ComplexFft::Vkfft(fft) = &mut self.complex_fft {
+                self.complex_frame[..half].copy_from_slice(&self.complex_half_a);
+                self.complex_frame[half..].copy_from_slice(&self.complex_half_b);
 
-                    let gpu_res: anyhow::Result<FftResult> = (|| {
-                        fft.window_and_process_inplace(&self.complex_frame)?;
+                let gpu_res: anyhow::Result<FftResult> = (|| {
+                    fft.window_and_process_inplace(&self.complex_frame)?;
+
+                    let (quantized_concat, quantized_level_offsets) = if include_waterfall {
                         let (q, o) = fft.quantize_and_downsample(
                             base_idx,
                             self.settings.downsample_levels,
@@ -370,22 +377,29 @@ impl FftEngine {
                             anyhow::bail!("VkFFT produced invalid spectrum (max_power={max_p})");
                         }
 
-                        fft.read_fft_output(&mut self.complex_frame)?;
-                        Ok(FftResult {
-                            normalize,
-                            quantized_concat: Some(q.into()),
-                            quantized_level_offsets: Some(o.into()),
-                        })
-                    })();
+                        (Some(q.into()), Some(o.into()))
+                    } else {
+                        (None, None)
+                    };
 
-                    match gpu_res {
-                        Ok(res) => return Ok(res),
-                        Err(e) => {
-                            static WARNED: std::sync::atomic::AtomicBool =
-                                std::sync::atomic::AtomicBool::new(false);
-                            if !WARNED.swap(true, std::sync::atomic::Ordering::Relaxed) {
-                                tracing::warn!(error = %e, "vkfft complex GPU path failed; falling back to CPU");
-                            }
+                    fft.read_fft_output(&mut self.complex_frame)?;
+                    Ok(FftResult {
+                        normalize,
+                        quantized_concat,
+                        quantized_level_offsets,
+                    })
+                })();
+
+                match gpu_res {
+                    Ok(res) => return Ok(res),
+                    Err(e) => {
+                        static WARNED: std::sync::atomic::AtomicBool =
+                            std::sync::atomic::AtomicBool::new(false);
+                        if !WARNED.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                            tracing::warn!(
+                                error = %e,
+                                "vkfft complex GPU path failed; falling back to CPU"
+                            );
                         }
                     }
                 }

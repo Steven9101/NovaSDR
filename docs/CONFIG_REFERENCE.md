@@ -19,7 +19,7 @@ If the files are missing, NovaSDR creates defaults on startup (empty markers; a 
 |---|---:|---:|---|
 | `port` | int | `9002` | Listen port |
 | `host` | string | `"[::]"` | Bind address |
-| `html_root` | string | `"html/"` | Static UI directory (e.g. `frontend/dist/`) |
+| `html_root` | string | `"frontend/dist/"` | Static UI directory (e.g. `frontend/dist/`) |
 | `otherusers` | int | `1` | Enables "other users" overlays (`/events` `signal_changes`) |
 | `threads` | int | `0` | Tokio worker thread count (`0` = auto; clamped to available CPU cores) |
 
@@ -29,14 +29,35 @@ If the files are missing, NovaSDR creates defaults on startup (empty markers; a 
 |---|---:|---:|---|
 | `register_online` | bool | `false` | Enables periodic registration updates to `register_url` |
 | `register_url` | string | `"https://sdr-list.xyz/api/update_websdr"` | Registration endpoint |
+| `public_port` | int | (unset) | Port advertised to SDR lists when behind a reverse proxy (defaults to `server.port`) |
 | `name` | string | `"NovaSDR"` | Used by `/server-info.json` |
 | `antenna` | string | `""` | Informational |
 | `grid_locator` | string | `"-"` | Used by UI and settings |
 | `hostname` | string | `""` | Informational |
 | `operator` | string | `""` | Used by `/server-info.json` |
 | `email` | string | `""` | Used by `/server-info.json` |
-| `callsign_lookup_url` | string | `"https://www.qrz.com/db/"` | UI link |
 | `chat_enabled` | bool | `true` | Enables chat in UI |
+
+### `config/overlays/header_panel.json`
+
+This overlay config controls an optional collapsible header panel in the UI.
+The file is created automatically on startup if missing.
+
+| Key | Type | Default | Notes |
+|---|---:|---:|---|
+| `enabled` | bool | `false` | Shows the collapse/expand arrow in the header |
+| `title` | string | `"About this receiver"` | Panel title (shown when expanded) |
+| `about` | string | (example text) | Short operator-provided text; newlines preserved |
+| `donation_enabled` | bool | `false` | When `true`, shows a donation button |
+| `donation_url` | string | (example URL) | Donation link URL |
+| `donation_label` | string | (example label) | Button label (defaults to "Donate" in UI if empty) |
+| `items` | array | (example items) | Manual info rows (label/value) shown in the expanded panel |
+| `images` | array | (example names) | Up to 3 image filenames in `server.html_root` (e.g. `frontend/dist/station-1.png` → `"station-1.png"`) |
+| `widgets.hamqsl` | bool | `false` | Shows the HAMQSL solar-terrestrial widget |
+| `widgets.blitzortung` | bool | `false` | Shows the Blitzortung widget |
+| `lookups.callsign` | bool | `false` | Enables QRZ callsign lookup in the header |
+| `lookups.mwlist` | bool | `false` | Enables MWLIST frequency lookup button |
+| `lookups.shortwave_info` | bool | `false` | Enables short-wave.info frequency lookup button |
 
 ### `limits`
 
@@ -94,10 +115,10 @@ Each entry in `receivers[]`:
 | `signal` | `"iq"` \| `"real"` | yes | Determines FFT layout |
 | `fft_size` | int | no | Must be power-of-two for the FFT engine |
 | `brightness_offset` | int | no | Waterfall visual offset |
-| `audio_sps` | int | no | Target audio passband rate; used to derive `audio_max_fft_size` and limits how wide the tuned audio window can be. Must be `<= 48000`. The backend FLAC stream uses this sample rate; the browser resamples for playback and caps output to 48 kHz. |
+| `audio_sps` | int | no | Target audio passband rate; used to derive `audio_max_fft_size` and limits how wide the tuned audio window can be. Must be `<= 48000`. The browser resamples for playback and caps output to 48 kHz. |
 | `waterfall_size` | int | no | Target waterfall width at client; drives downsample level selection |
 | `waterfall_compression` | `"zstd"` | no | Only `zstd` supported |
-| `audio_compression` | `"flac"` | no | Only `flac` supported |
+| `audio_compression` | `"adpcm"` | no | Supported: `adpcm` |
 | `accelerator` | `"none"` \| `"clfft"` \| `"vkfft"` | no | `clfft` requires building with `--features clfft`; `vkfft` requires building with `--features vkfft` |
 | `smeter_offset` | int | no | UI-only offset |
 
@@ -133,15 +154,15 @@ Extra keys supported for `{"kind":"soapysdr", ...}`:
 |---|---:|---|
 | `frequency` | int | `-1` means "center" |
 | `modulation` | string | `USB`, `LSB`, `AM`, `SAM`, `FM`, `FMC`, `WBFM` |
-| `ssb_lowcut_hz` | int | Optional. Default `300`. Only used when `modulation` is `USB`/`LSB`. |
-| `ssb_highcut_hz` | int | Optional. Default `3000`. Only used when `modulation` is `USB`/`LSB`. Must be `> ssb_lowcut_hz`. |
+| `ssb_lowcut_hz` | int | Optional. Default `100`. Only used when `modulation` is `USB`/`LSB`. |
+| `ssb_highcut_hz` | int | Optional. Default `2800`. Only used when `modulation` is `USB`/`LSB`. Must be `> ssb_lowcut_hz`. |
 | `squelch_enabled` | bool | Optional. Default `false`. If `true`, the UI may enable squelch automatically on first connect. |
 
 The backend clamps the derived default `(l,r)` audio window to `audio_max_fft_size` so `/audio` always starts.
 
 Default audio window shapes (derived from `defaults.modulation`):
-- `USB`: `+ssb_lowcut_hz..+ssb_highcut_hz` relative to the tuned carrier (defaults: `+300..+3000 Hz`)
-- `LSB`: `-ssb_highcut_hz..-ssb_lowcut_hz` relative to the tuned carrier (defaults: `-3000..-300 Hz`)
+- `USB`: `+ssb_lowcut_hz..+ssb_highcut_hz` relative to the tuned carrier (defaults: `+100..+2800 Hz`)
+- `LSB`: `-ssb_highcut_hz..-ssb_lowcut_hz` relative to the tuned carrier (defaults: `-2800..-100 Hz`)
 - `AM` / `SAM` / `FM`: `±5 kHz`
 - `FMC`: `±5 kHz` (frontend applies an extra ~300 Hz high-pass to reduce CTCSS)
 - `WBFM`: `±96 kHz` (default only; usable width is limited by `audio_sps`)

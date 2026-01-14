@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 pub struct Agc {
     desired_level: f32,
     attack_coeff: f32,
@@ -7,8 +9,12 @@ pub struct Agc {
     am_release_coeff: f32,
     look_ahead_samples: usize,
     gains: Vec<f32>,
-    lookahead: std::collections::VecDeque<f32>,
-    lookahead_max: std::collections::VecDeque<f32>,
+    stage_root: f32,
+    ring: Vec<f32>,
+    ring_pos: usize,
+    filled: usize,
+    max_queue: VecDeque<(usize, f32)>,
+    sample_index: usize,
     max_gain: f32,
     hang_time: usize,
     hang_counter: usize,
@@ -29,6 +35,8 @@ impl Agc {
         let fast_attack_coeff = 1.0 - (-1.0 / (0.5 * 0.001 * sample_rate)).exp();
         let am_attack_coeff = attack_coeff * 0.1;
         let am_release_coeff = release_coeff * 0.1;
+        let gains = vec![1.0; 5];
+        let stage_root = 1.0 / gains.len() as f32;
 
         Self {
             desired_level,
@@ -38,11 +46,15 @@ impl Agc {
             am_attack_coeff,
             am_release_coeff,
             look_ahead_samples,
-            gains: vec![1.0; 5],
-            lookahead: std::collections::VecDeque::new(),
-            lookahead_max: std::collections::VecDeque::new(),
+            gains,
+            stage_root,
+            ring: vec![0.0; look_ahead_samples],
+            ring_pos: 0,
+            filled: 0,
+            max_queue: VecDeque::new(),
+            sample_index: 0,
             max_gain: 1000.0,
-            hang_time: (0.05 * sample_rate) as usize,
+            hang_time: (0.05 * sample_rate).round().max(1.0) as usize,
             hang_counter: 0,
             hang_threshold: 0.05,
         }
@@ -60,65 +72,80 @@ impl Agc {
 
     pub fn reset(&mut self) {
         self.gains.fill(1.0);
-        self.lookahead.clear();
-        self.lookahead_max.clear();
+        self.ring.fill(0.0);
+        self.ring_pos = 0;
+        self.filled = 0;
+        self.max_queue.clear();
+        self.sample_index = 0;
         self.hang_counter = 0;
     }
 
     pub fn process(&mut self, samples: &mut [f32]) {
         for s in samples.iter_mut() {
-            self.push(*s);
-            if self.lookahead.len() == self.look_ahead_samples {
-                let current_sample = *self.lookahead.front().unwrap_or(&0.0);
-                let peak = self.max();
-                let desired_gain =
-                    ((self.desired_level / (peak + 1e-15)) * 100.0).min(self.max_gain);
-                self.apply_progressive_agc(desired_gain);
+            let input = *s;
+            let idx = self.sample_index;
+            self.sample_index = self.sample_index.wrapping_add(1);
 
-                let mut total_gain = 1.0f32;
-                for g in self.gains.iter() {
-                    total_gain *= *g;
+            self.push_sample(idx, input);
+
+            if self.filled < self.look_ahead_samples {
+                self.filled += 1;
+                if self.filled < self.look_ahead_samples {
+                    *s = 0.0;
+                    continue;
                 }
-                total_gain = total_gain.min(self.max_gain);
-                *s = current_sample * (total_gain * 0.01);
-            } else {
-                *s = 0.0;
             }
+
+            let delayed = self.ring[self.ring_pos];
+            let peak = self.current_peak();
+            let desired_gain = ((self.desired_level / (peak + 1e-15)) * 100.0).min(self.max_gain);
+            self.apply_progressive_agc(desired_gain);
+
+            let mut total_gain = 1.0f32;
+            for g in self.gains.iter() {
+                total_gain *= *g;
+            }
+            total_gain = total_gain.min(self.max_gain);
+            *s = delayed * (total_gain * 0.01);
         }
     }
 
-    fn push(&mut self, sample: f32) {
-        self.lookahead.push_back(sample);
-        while let Some(back) = self.lookahead_max.back().copied() {
-            if back.abs() < sample.abs() {
-                self.lookahead_max.pop_back();
+    fn push_sample(&mut self, idx: usize, sample: f32) {
+        let abs = sample.abs();
+
+        while let Some((_, back_abs)) = self.max_queue.back().copied() {
+            if back_abs < abs {
+                self.max_queue.pop_back();
             } else {
                 break;
             }
         }
-        self.lookahead_max.push_back(sample);
-        if self.lookahead.len() > self.look_ahead_samples {
-            self.pop();
-        }
-    }
+        self.max_queue.push_back((idx, abs));
 
-    fn pop(&mut self) {
-        if let Some(sample) = self.lookahead.pop_front() {
-            if self.lookahead_max.front().copied() == Some(sample) {
-                self.lookahead_max.pop_front();
+        let window = self.look_ahead_samples;
+        while let Some((front_idx, _)) = self.max_queue.front().copied() {
+            if front_idx + window <= idx {
+                self.max_queue.pop_front();
+            } else {
+                break;
             }
         }
+
+        self.ring[self.ring_pos] = sample;
+        self.ring_pos += 1;
+        if self.ring_pos >= self.ring.len() {
+            self.ring_pos = 0;
+        }
     }
 
-    fn max(&self) -> f32 {
-        self.lookahead_max.front().copied().unwrap_or(0.0).abs()
+    fn current_peak(&self) -> f32 {
+        self.max_queue.front().map(|(_, abs)| *abs).unwrap_or(0.0)
     }
 
     fn apply_progressive_agc(&mut self, desired_gain: f32) {
-        let stages = self.gains.len() as f32;
-        for g in self.gains.iter_mut() {
-            let stage_desired = desired_gain.powf(1.0 / stages).min(self.max_gain);
+        let stage_desired = desired_gain.powf(self.stage_root).min(self.max_gain);
 
+        for g in self.gains.iter_mut() {
             if stage_desired < *g * self.hang_threshold {
                 self.hang_counter = self.hang_time;
             }
