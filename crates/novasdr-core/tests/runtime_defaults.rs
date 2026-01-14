@@ -29,6 +29,7 @@ fn runtime_defaults_use_configured_modulation() {
                 ssb_lowcut_hz: None,
                 ssb_highcut_hz: None,
                 squelch_enabled: false,
+                colormap: None,
             },
         },
     };
@@ -78,6 +79,7 @@ fn runtime_defaults_respect_configured_ssb_passband() {
                 ssb_lowcut_hz: Some(100),
                 ssb_highcut_hz: Some(2800),
                 squelch_enabled: false,
+                colormap: None,
             },
         },
     };

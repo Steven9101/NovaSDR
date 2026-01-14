@@ -252,6 +252,7 @@ impl AppState {
             "ssb_lowcut_hz": ssb_lowcut_hz,
             "ssb_highcut_hz": ssb_highcut_hz,
             "squelch_enabled": receiver.receiver.input.defaults.squelch_enabled,
+            "colormap": receiver.receiver.input.defaults.colormap,
         });
 
         let out = json!({

@@ -123,6 +123,8 @@ pub struct ReceiverDefaults {
     pub ssb_highcut_hz: Option<i64>,
     #[serde(default)]
     pub squelch_enabled: bool,
+    #[serde(default)]
+    pub colormap: Option<String>,
 }
 
 impl Default for ReceiverDefaults {
@@ -133,6 +135,7 @@ impl Default for ReceiverDefaults {
             ssb_lowcut_hz: None,
             ssb_highcut_hz: None,
             squelch_enabled: false,
+            colormap: None,
         }
     }
 }
