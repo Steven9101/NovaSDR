@@ -2,7 +2,7 @@ use anyhow::Context;
 use novasdr_core::config::{ReceiverInput, SampleFormat, SignalType, SoapySdrDriver};
 use std::io::Read;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 fn to_stream_args(driver: &SoapySdrDriver) -> anyhow::Result<soapysdr::Args> {
     let mut args = soapysdr::Args::new();
@@ -24,11 +24,17 @@ pub fn open(
     driver: &SoapySdrDriver,
     input: &ReceiverInput,
     stop_requested: Arc<AtomicBool>,
+    soapy_semaphore: Arc<Mutex<()>>,
 ) -> anyhow::Result<Box<dyn Read + Send>> {
     anyhow::ensure!(
         input.signal == SignalType::Iq,
         "soapysdr input currently requires receiver.input.signal = \"iq\""
     );
+
+    // This lock is used to create one SoapySdr device at a time.
+    // Otherwise, multiple soapy devices are created in parallel using multiple threads.
+    // This leads to the appearance of errors that are difficult to reproduce and debug.
+    let _guard = soapy_semaphore.lock();
 
     match driver.format {
         SampleFormat::Cs16 => open_cs16(driver, input, stop_requested),

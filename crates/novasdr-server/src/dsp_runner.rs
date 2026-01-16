@@ -9,7 +9,7 @@ use std::{
     io,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        Arc, Mutex,
     },
     thread,
     time::Duration,
@@ -37,6 +37,7 @@ pub fn start(state: Arc<AppState>) -> anyhow::Result<()> {
         waterfall_threads_budget,
         "DSP threading policy"
     );
+    let soapy_semaphore = Arc::new(Mutex::new(()));
 
     for rx in state.receivers.values() {
         let state = state.clone();
@@ -46,11 +47,18 @@ pub fn start(state: Arc<AppState>) -> anyhow::Result<()> {
         reader_threads_budget = reader_threads_budget.saturating_sub(1);
         let use_waterfall_thread = waterfall_threads_budget > 0;
         waterfall_threads_budget = waterfall_threads_budget.saturating_sub(1);
+        let soapy_semaphore = soapy_semaphore.clone();
         thread::Builder::new()
             .name(format!("novasdr-dsp-{rx_id}"))
             .spawn(move || {
                 tracing::info!(receiver_id = %rx_id, "DSP thread started");
-                if let Err(e) = run_dsp_loop(state, rx, use_reader_thread, use_waterfall_thread) {
+                if let Err(e) = run_dsp_loop(
+                    state,
+                    rx,
+                    use_reader_thread,
+                    use_waterfall_thread,
+                    soapy_semaphore,
+                ) {
                     if crate::shutdown::is_shutdown_requested() || is_expected_input_termination(&e)
                     {
                         tracing::info!(receiver_id = %rx_id, error = ?e, "DSP loop terminated");
@@ -84,9 +92,11 @@ fn run_dsp_loop(
     receiver: Arc<ReceiverState>,
     use_reader_thread: bool,
     use_waterfall_thread: bool,
+    soapy_semaphore: Arc<Mutex<()>>,
 ) -> anyhow::Result<()> {
     let stop_requested = Arc::new(AtomicBool::new(false));
-    let (input, input_name) = crate::input::open(&receiver.receiver, stop_requested.clone())?;
+    let (input, input_name) =
+        crate::input::open(&receiver.receiver, stop_requested.clone(), soapy_semaphore)?;
     let sample_format = receiver.receiver.input.driver.get_sample_format();
     tracing::info!(
         receiver_id = %receiver.receiver.id,
