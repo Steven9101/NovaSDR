@@ -1,5 +1,6 @@
 use anyhow::Context;
 use novasdr_core::config::{ReceiverInput, SampleFormat, SignalType, SoapySdrDriver};
+use soapysdr::StreamSample;
 use std::io::Read;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -37,8 +38,8 @@ pub fn open(
     let _guard = soapy_semaphore.lock();
 
     match driver.format {
-        SampleFormat::Cs16 => open_cs16(driver, input, stop_requested),
-        SampleFormat::Cf32 => open_cf32(driver, input, stop_requested),
+        SampleFormat::Cs16 => open_fmt::<num_complex::Complex<i16>>(driver, input, stop_requested),
+        SampleFormat::Cf32 => open_fmt::<num_complex::Complex<f32>>(driver, input, stop_requested),
         other => anyhow::bail!(
             "soapysdr input only supports format \"cs16\" or \"cf32\" (got {other:?})"
         ),
@@ -108,11 +109,14 @@ fn apply_gain_and_settings(
     Ok(())
 }
 
-fn open_cs16(
+fn open_fmt<E>(
     driver: &SoapySdrDriver,
     input: &ReceiverInput,
     stop_requested: Arc<AtomicBool>,
-) -> anyhow::Result<Box<dyn Read + Send>> {
+) -> anyhow::Result<Box<dyn Read + Send>>
+where
+    E: StreamSample + Copy + Default + Send + 'static,
+{
     let device = soapysdr::Device::new(driver.device.as_str()).context("open SoapySDR device")?;
 
     if let Some(ant) = driver.antenna.as_deref() {
@@ -137,7 +141,7 @@ fn open_cs16(
 
     let stream_args = to_stream_args(driver).context("build SoapySDR stream args")?;
     let mut stream = device
-        .rx_stream_args::<num_complex::Complex<i16>, _>(&[driver.channel], stream_args)
+        .rx_stream_args::<E, _>(&[driver.channel], stream_args)
         .context("create SoapySDR RX stream")?;
     stream
         .activate(None)
@@ -145,48 +149,6 @@ fn open_cs16(
 
     // Use a reasonable internal buffer size (16K complex samples).
     // SoapySDR will fill what it can per read; we accumulate until the caller is satisfied.
-    Ok(Box::new(SoapyRead::new(
-        stream,
-        driver.rx_buffer_samples,
-        stop_requested,
-    )))
-}
-
-fn open_cf32(
-    driver: &SoapySdrDriver,
-    input: &ReceiverInput,
-    stop_requested: Arc<AtomicBool>,
-) -> anyhow::Result<Box<dyn Read + Send>> {
-    let device = soapysdr::Device::new(driver.device.as_str()).context("open SoapySDR device")?;
-
-    if let Some(ant) = driver.antenna.as_deref() {
-        device
-            .set_antenna(soapysdr::Direction::Rx, driver.channel, ant)
-            .context("set SoapySDR RX antenna")?;
-    }
-
-    device
-        .set_sample_rate(soapysdr::Direction::Rx, driver.channel, input.sps as f64)
-        .context("set SoapySDR sample rate")?;
-    device
-        .set_frequency(
-            soapysdr::Direction::Rx,
-            driver.channel,
-            input.frequency as f64,
-            (),
-        )
-        .context("set SoapySDR frequency")?;
-
-    apply_gain_and_settings(driver, &device)?;
-
-    let stream_args = to_stream_args(driver).context("build SoapySDR stream args")?;
-    let mut stream = device
-        .rx_stream_args::<num_complex::Complex<f32>, _>(&[driver.channel], stream_args)
-        .context("create SoapySDR RX stream")?;
-    stream
-        .activate(None)
-        .context("activate SoapySDR RX stream")?;
-
     Ok(Box::new(SoapyRead::new(
         stream,
         driver.rx_buffer_samples,
