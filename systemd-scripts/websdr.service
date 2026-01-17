@@ -10,6 +10,5 @@ Restart=always
 RestartSec=5
 
 [Install]
-Alias=websdr.service
 WantedBy=multi-user.target
 
