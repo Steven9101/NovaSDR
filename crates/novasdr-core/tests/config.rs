@@ -12,6 +12,7 @@ fn websdr_register_url_default_is_present() {
         updates: novasdr_core::config::Updates::default(),
         receivers: vec![novasdr_core::config::ReceiverConfig {
             id: "rx0".to_string(),
+            enabled: true,
             name: "rx0".to_string(),
             input: novasdr_core::config::ReceiverInput {
                 sps: 2_048_000,

@@ -76,6 +76,8 @@ pub struct Limits {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ReceiverConfig {
     pub id: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
     #[serde(default)]
     pub name: String,
     pub input: ReceiverInput,
@@ -233,6 +235,10 @@ pub enum SampleFormat {
     F32,
     Cf32,
     F64,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn default_port() -> u16 {
@@ -424,9 +430,19 @@ pub fn load_from_files(config_json: &Path, receivers_json: &Path) -> anyhow::Res
         "receivers.json must contain at least one receiver"
     );
 
+    // patch empty names
+    for r in receivers.receivers.iter_mut() {
+        if r.name.trim().is_empty() {
+            r.name = r.id.clone();
+        }
+    }
+
+    let enabled_receivers: Vec<&ReceiverConfig> =
+        receivers.receivers.iter().filter(|r| r.enabled).collect();
+
     let mut ids = HashSet::<String>::new();
     let mut stdin_receivers = 0usize;
-    for r in receivers.receivers.iter_mut() {
+    for r in enabled_receivers.iter() {
         let id_trimmed = r.id.trim();
         anyhow::ensure!(!id_trimmed.is_empty(), "receivers[].id must not be empty");
         if !ids.insert(r.id.clone()) {
@@ -435,25 +451,24 @@ pub fn load_from_files(config_json: &Path, receivers_json: &Path) -> anyhow::Res
         if matches!(r.input.driver, InputDriver::Stdin { .. }) {
             stdin_receivers += 1;
         }
-        if r.name.trim().is_empty() {
-            r.name = r.id.clone();
-        }
     }
     anyhow::ensure!(
         stdin_receivers <= 1,
-        "only one receiver may use input.driver.kind = \"stdin\" (found {stdin_receivers})"
+        "only one enabled receiver may use input.driver.kind = \"stdin\" (found {stdin_receivers})"
     );
 
     let active_id = match global.active_receiver_id.as_deref().map(str::trim) {
         Some(id) if !id.is_empty() => id.to_string(),
-        _ if receivers.receivers.len() == 1 => receivers.receivers[0].id.clone(),
+        _ if enabled_receivers.len() == 1 => enabled_receivers[0].id.clone(),
         _ => anyhow::bail!(
             "active_receiver_id is required in config.json when receivers.json contains multiple receivers"
         ),
     };
 
-    if !receivers.receivers.iter().any(|r| r.id == active_id) {
-        anyhow::bail!("active_receiver_id {active_id:?} not found in receivers.json");
+    if !enabled_receivers.iter().any(|r| r.id == active_id) {
+        anyhow::bail!(
+            "active_receiver_id {active_id:?} not found amoung enabled receivers in receivers.json"
+        );
     }
 
     Ok(Config {

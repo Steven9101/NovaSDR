@@ -235,6 +235,7 @@ fn seed_receivers_from_soapysdr(receivers: &mut Value) -> anyhow::Result<()> {
             let id = format!("rx{idx}");
             receivers_arr.push(json!({
               "id": id,
+              "enabled": true,
               "name": display_name_for_device(dev),
               "input": {
                 "sps": 2048000,
@@ -851,6 +852,7 @@ fn configure_active_receiver(config: &mut Value, receivers: &Value) -> anyhow::R
         .and_then(Value::as_array)
         .map_or(&[][..], |v| v.as_slice())
         .iter()
+        .filter(|r| r.get("enabled").and_then(Value::as_bool).unwrap_or(true))
         .filter_map(|r| r.get("id").and_then(Value::as_str))
         .map(|s| s.to_string())
         .collect::<Vec<_>>();
@@ -946,6 +948,7 @@ fn configure_receivers(root: &mut Value) -> anyhow::Result<()> {
 
             let mut entry = json!({
               "id": id,
+              "enabled": true,
               "name": "",
               "input": {
                 "sps": 2048000,
@@ -1020,6 +1023,15 @@ fn edit_receiver(receiver: &mut Value) -> anyhow::Result<()> {
     ui::blank();
     ui::line(&format!("Receiver: {receiver_id}"));
     ui::line("----------------");
+
+    let enabled = receiver
+        .get("enabled")
+        .and_then(Value::as_bool)
+        .unwrap_or(true);
+    receiver
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("receiver must be an object"))?
+        .insert("enabled".to_string(), json!(enabled));
 
     let name = Text::new("Display name")
         .with_default(receiver.get("name").and_then(Value::as_str).unwrap_or(""))
