@@ -20,7 +20,7 @@ realfft = "3.4.0"
 rustfft = "6.2.0"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_bytes = "0.11.15"
-serde_json = "1.0.134"
+serde_json = { version = "1.0.134", features = ["preserve_order"] }
 serde_with = "3.11.0"
 tracing = "0.1.41"
 zstd-safe = "7.2.1"

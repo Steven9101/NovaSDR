@@ -40,6 +40,10 @@ pub fn start(state: Arc<AppState>) -> anyhow::Result<()> {
     let soapy_semaphore = Arc::new(Mutex::new(()));
 
     for rx in state.receivers.values() {
+        if !rx.receiver.enabled {
+            tracing::info!(receiver_id = %rx.receiver.id, "Skip disabled receiver");
+            continue;
+        }
         let state = state.clone();
         let rx = rx.clone();
         let rx_id = rx.receiver.id.clone();
