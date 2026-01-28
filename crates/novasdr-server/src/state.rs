@@ -554,6 +554,7 @@ pub async fn receivers_info(State(state): State<Arc<AppState>>) -> impl IntoResp
     let receivers = cfg
         .receivers
         .iter()
+        .filter(|r| r.enabled)
         .map(|r| {
             let rt = state
                 .receiver_state(r.id.as_str())
