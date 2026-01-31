@@ -7,6 +7,23 @@ pub enum Command {
     Setup,
     /// Edit existing configuration with an interactive wizard.
     Configure,
+    /// Run benchmark
+    Benchmark {
+        kind: BenchmarkKind,
+        iterations: Option<usize>,
+        fftsize: Option<usize>,
+    },
+}
+
+#[derive(Debug, Clone, clap::ValueEnum)]
+pub enum BenchmarkKind {
+    CpuFftComplex,
+    CpuFftReal,
+    ClFftComplex,
+    ClFftReal,
+    VkFftComplex,
+    VkFftReal,
+    SSB,
 }
 
 #[derive(Debug, Parser)]
