@@ -9,11 +9,19 @@ use crate::cli::BenchmarkKind;
 use crate::state::{AgcSpeed, AudioParams};
 use crate::ws::audio::AudioPipeline;
 
-fn generate_random_vector<T: Rng>(rng: &mut T, size: usize) -> Vec<Complex32> {
+fn generate_random_vector_complex<T: Rng>(rng: &mut T, size: usize) -> Vec<Complex32> {
     let mut res: Vec<Complex32> = vec![Complex32::new(0.0, 0.0); size];
     let mut gen_rng = || rng.gen_range(-1.0..1.0);
     for v in res.iter_mut() {
         *v = Complex32::new(gen_rng(), gen_rng());
+    }
+    res
+}
+
+fn generate_random_vector_real<T: Rng>(rng: &mut T, size: usize) -> Vec<f32> {
+    let mut res: Vec<f32> = vec![0.0; size];
+    for v in res.iter_mut() {
+        *v = rng.gen_range(-1.0..1.0);
     }
     res
 }
@@ -28,7 +36,7 @@ fn ssb_benchmark(iterations: usize) -> anyhow::Result<()> {
     let mut pipeline = AudioPipeline::new(sample_rate, audio_fft_size, compression)?;
 
     let mut rng = rand::thread_rng();
-    let spectrum = generate_random_vector(&mut rng, audio_fft_size);
+    let spectrum = generate_random_vector_complex(&mut rng, audio_fft_size);
     let params = AudioParams {
         l: 200,
         m: 400.0,
@@ -77,8 +85,10 @@ fn fft_benchmark(
 
     let half_size = fft_size / 2;
     let mut rng = rand::thread_rng();
-    fft.load_complex_half_a(&generate_random_vector(&mut rng, half_size));
-    fft.load_complex_half_b(&generate_random_vector(&mut rng, half_size));
+    fft.load_complex_half_a(&generate_random_vector_complex(&mut rng, half_size));
+    fft.load_complex_half_b(&generate_random_vector_complex(&mut rng, half_size));
+    fft.load_real_half_a(&generate_random_vector_real(&mut rng, half_size));
+    fft.load_real_half_b(&generate_random_vector_real(&mut rng, half_size));
 
     for _idx in 0..iterations {
         let _ = fft.execute(include_waterfall)?;
