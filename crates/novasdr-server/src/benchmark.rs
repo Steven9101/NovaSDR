@@ -99,7 +99,7 @@ pub fn run_benchmark(
         BenchmarkKind::ClFftReal => (Accelerator::Clfft, true),
         BenchmarkKind::VkFftComplex => (Accelerator::Vkfft, false),
         BenchmarkKind::VkFftReal => (Accelerator::Vkfft, true),
-        BenchmarkKind::SSB => return ssb_benchmark(iterations.unwrap_or(500)),
+        BenchmarkKind::Ssb => return ssb_benchmark(iterations.unwrap_or(500)),
     };
 
     fft_benchmark(

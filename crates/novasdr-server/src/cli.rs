@@ -23,7 +23,7 @@ pub enum BenchmarkKind {
     ClFftReal,
     VkFftComplex,
     VkFftReal,
-    SSB,
+    Ssb,
 }
 
 #[derive(Debug, Parser)]
