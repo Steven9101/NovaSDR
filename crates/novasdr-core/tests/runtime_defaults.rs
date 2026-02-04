@@ -7,6 +7,7 @@ use novasdr_core::config::{
 fn runtime_defaults_use_configured_modulation() {
     let receiver = ReceiverConfig {
         id: "rx0".to_string(),
+        enabled: true,
         name: "rx0".to_string(),
         input: ReceiverInput {
             sps: 60_000_000,
@@ -57,6 +58,7 @@ fn runtime_defaults_use_configured_modulation() {
 fn runtime_defaults_respect_configured_ssb_passband() {
     let receiver = ReceiverConfig {
         id: "rx0".to_string(),
+        enabled: true,
         name: "rx0".to_string(),
         input: ReceiverInput {
             sps: 2_000_000,

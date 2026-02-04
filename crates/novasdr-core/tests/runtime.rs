@@ -6,6 +6,7 @@ use novasdr_core::config::{
 fn base_config(signal: SignalType) -> Config {
     let receiver = ReceiverConfig {
         id: "rx0".to_string(),
+        enabled: true,
         name: "rx0".to_string(),
         input: ReceiverInput {
             sps: 2_000_000,

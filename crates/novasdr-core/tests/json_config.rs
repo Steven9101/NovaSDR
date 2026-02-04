@@ -100,9 +100,68 @@ fn json_load_rejects_multiple_stdin_receivers() {
     let err = load_from_files(&config, &receivers).unwrap_err();
     let msg = err.to_string();
     assert!(
-        msg.contains("only one receiver may use input.driver.kind = \"stdin\""),
+        msg.contains("only one enabled receiver may use input.driver.kind = \"stdin\""),
         "unexpected error: {msg}"
     );
+}
+
+#[test]
+fn json_load_reject_disabled_stdin_receivers() {
+    let config = write_temp(
+        "config.json",
+        r#"{
+  "server": { "port": 9002, "host": "0.0.0.0", "html_root": "frontend/dist/", "otherusers": 1, "threads": 1 },
+  "websdr": { "name": "NovaSDR" },
+  "limits": { "audio": 1, "waterfall": 1, "events": 1 },
+  "active_receiver_id": "rx0"
+}"#,
+    );
+    let receivers = write_temp(
+        "receivers.json",
+        r#"{
+  "receivers": [
+    { "id": "rx0", "enabled": false, "input": { "sps": 2048000, "frequency": 100900000, "signal": "iq", "driver": { "kind": "stdin", "format": "u8" } } },
+    { "id": "rx1", "enabled": true, "input": { "sps": 2048000, "frequency": 100900000, "signal": "iq", "driver": { "kind": "stdin", "format": "u8" } } }
+  ]
+}"#,
+    );
+
+    let err = load_from_files(&config, &receivers).unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains(
+            "active_receiver_id \"rx0\" not found amoung enabled receivers in receivers.json"
+        ),
+        "unexpected error: {msg}"
+    );
+}
+
+#[test]
+fn json_load_multiple_stdin_receivers() {
+    let config = write_temp(
+        "config.json",
+        r#"{
+  "server": { "port": 9002, "host": "0.0.0.0", "html_root": "frontend/dist/", "otherusers": 1, "threads": 1 },
+  "websdr": { "name": "NovaSDR" },
+  "limits": { "audio": 1, "waterfall": 1, "events": 1 },
+  "active_receiver_id": "rx1"
+}"#,
+    );
+    let receivers = write_temp(
+        "receivers.json",
+        r#"{
+  "receivers": [
+    { "id": "rx0", "enabled": false, "input": { "sps": 2048000, "frequency": 100900000, "signal": "iq", "driver": { "kind": "stdin", "format": "u8" } } },
+    { "id": "rx1", "enabled": true, "input": { "sps": 2048000, "frequency": 100900000, "signal": "iq", "driver": { "kind": "stdin", "format": "u8" } } }
+  ]
+}"#,
+    );
+
+    let cfg = load_from_files(&config, &receivers).unwrap();
+    assert_eq!(cfg.active_receiver_id, "rx1");
+    let rx = cfg.active_receiver().unwrap();
+    assert_eq!(rx.id, "rx1");
+    assert_eq!(rx.name, "rx1");
 }
 
 #[test]
