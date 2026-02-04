@@ -1,0 +1,555 @@
+{
+  "markers": [
+    {
+      "frequency": 9000,
+      "name": "Lightning",
+      "mode": "AM"
+    },
+    {
+      "frequency": 17200,
+      "name": "SAQ Alexanderson",
+      "mode": "CW"
+    },
+    {
+      "frequency": 30000,
+      "name": "Lightning",
+      "mode": "AM"
+    },
+    {
+      "frequency": 60000,
+      "name": "NPL-time",
+      "mode": "CW"
+    },
+
+    {
+      "frequency": 77500,
+      "name": "DCF77",
+      "mode": "CW"
+    },
+    {
+      "frequency": 122300,
+      "name": "DCF42",
+      "mode": "CW"
+    },
+    {
+      "frequency": 129100,
+      "name": "DCF49",
+      "mode": "CW"
+    },
+    {
+      "frequency": 139000,
+      "name": "DCF39",
+      "mode": "CW"
+    },
+    {
+      "frequency": 162000,
+      "name": "TDF-time",
+      "mode": "CW"
+    },
+    {
+      "frequency": 198000,
+      "name": "BBC4",
+      "mode": "AM"
+    },
+    {
+      "frequency": 648000,
+      "name": "Caroline",
+      "mode": "SAM"
+    },
+    {
+      "frequency": 693000,
+      "name": "BBC5",
+      "mode": "SAM"
+    },
+    {
+      "frequency": 1053000,
+      "name": "TalkSport",
+      "mode": "AM"
+    },
+    {
+      "frequency": 1089000,
+      "name": "TalkSport",
+      "mode": "AM"
+    },
+    {
+      "frequency": 1368000,
+      "name": "Caroline",
+      "mode": "AM"
+    },
+    {
+      "frequency": 1458000,
+      "name": "Lyca",
+      "mode": "AM"
+    },
+    {
+      "frequency": 5955000,
+      "name": "Veronica",
+      "mode": "AM"
+    },
+    {
+      "frequency": 6040000,
+      "name": "Delta",
+      "mode": "AM"
+    },
+    {
+      "frequency": 6085000,
+      "name": "MiAmico",
+      "mode": "AM"
+    },
+    {
+      "frequency": 6060000,
+      "name": "Casanova",
+      "mode": "AM"
+    },
+    {
+      "frequency": 6070000,
+      "name": "292",
+      "mode": "AM"
+    },
+    {
+      "frequency": 6130000,
+      "name": "Europe",
+      "mode": "AM"
+    },
+    {
+      "frequency": 6150000,
+      "name": "Europa",
+      "mode": "AM"
+    },
+    {
+      "frequency": 6170000,
+      "name": "Delta",
+      "mode": "AM"
+    },
+    {
+      "frequency": 7270000,
+      "name": "Rockpower",
+      "mode": "AM"
+    },
+    {
+      "frequency": 7405000,
+      "name": "Piepzender",
+      "mode": "AM"
+    },
+    {
+      "frequency": 9670000,
+      "name": "Channel292",
+      "mode": "AM"
+    },
+    {
+      "frequency": 11815000,
+      "name": "Vatican",
+      "mode": "AM"
+    },
+
+    {
+      "frequency": 1850000,
+      "name": "Calling",
+      "mode": "LSB"
+    },
+    {
+      "frequency": 3630000,
+      "name": "Dutch Calling",
+      "mode": "LSB"
+    },
+    {
+      "frequency": 3645000,
+      "name": "Belgium Calling",
+      "mode": "LSB"
+    },
+    {
+      "frequency": 7073000,
+      "name": "Dutch Calling",
+      "mode": "LSB"
+    },
+    {
+      "frequency": 1840000,
+      "name": "FT-8",
+      "mode": "USB"
+    },
+    {
+      "frequency": 3573000,
+      "name": "FT-8",
+      "mode": "USB"
+    },
+    {
+      "frequency": 5357000,
+      "name": "FT-8",
+      "mode": "USB"
+    },
+    {
+      "frequency": 7074000,
+      "name": "FT-8",
+      "mode": "USB"
+    },
+    {
+      "frequency": 10136000,
+      "name": "FT-8",
+      "mode": "USB"
+    },
+    {
+      "frequency": 14074000,
+      "name": "FT-8",
+      "mode": "USB"
+    },
+    {
+      "frequency": 18100000,
+      "name": "FT-8",
+      "mode": "USB"
+    },
+    {
+      "frequency": 21074000,
+      "name": "FT-8",
+      "mode": "USB"
+    },
+    {
+      "frequency": 24915000,
+      "name": "FT-8",
+      "mode": "USB"
+    },
+    {
+      "frequency": 26965000,
+      "name": "1",
+      "mode": "FM"
+    },
+    {
+      "frequency": 26975000,
+      "name": "2",
+      "mode": "FM"
+    },
+    {
+      "frequency": 26985000,
+      "name": "3",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27005000,
+      "name": "4",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27015000,
+      "name": "5",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27025000,
+      "name": "6",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27035000,
+      "name": "7",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27055000,
+      "name": "8",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27065000,
+      "name": "9",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27075000,
+      "name": "10",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27085000,
+      "name": "11",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27105000,
+      "name": "12",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27115000,
+      "name": "13",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27125000,
+      "name": "14",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27135000,
+      "name": "15",
+      "mode": "AM"
+    },
+    {
+      "frequency": 27155000,
+      "name": "16",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27165000,
+      "name": "17",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27175000,
+      "name": "18",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27185000,
+      "name": "19",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27205000,
+      "name": "20",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27215000,
+      "name": "21",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27225000,
+      "name": "22",
+      "mode": "AM"
+    },
+    {
+      "frequency": 27255000,
+      "name": "23",
+      "mode": "AM"
+    },
+    {
+      "frequency": 27235000,
+      "name": "24",
+      "mode": "AM"
+    },
+    {
+      "frequency": 27245000,
+      "name": "25",
+      "mode": "AM"
+    },
+    {
+      "frequency": 27265000,
+      "name": "26",
+      "mode": "AM"
+    },
+    {
+      "frequency": 27275000,
+      "name": "27",
+      "mode": "LSB"
+    },
+    {
+      "frequency": 27285000,
+      "name": "28",
+      "mode": "LSB"
+    },
+    {
+      "frequency": 27295000,
+      "name": "29",
+      "mode": "LSB"
+    },
+    {
+      "frequency": 27305000,
+      "name": "30",
+      "mode": "LSB"
+    },
+    {
+      "frequency": 27315000,
+      "name": "31",
+      "mode": "LSB"
+    },
+    {
+      "frequency": 27325000,
+      "name": "32",
+      "mode": "LSB"
+    },
+    {
+      "frequency": 27335000,
+      "name": "33",
+      "mode": "LSB"
+    },
+    {
+      "frequency": 27345000,
+      "name": "34",
+      "mode": "LSB"
+    },
+    {
+      "frequency": 27355000,
+      "name": "35",
+      "mode": "LSB"
+    },
+    {
+      "frequency": 27365000,
+      "name": "36",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27375000,
+      "name": "37",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27385000,
+      "name": "38",
+      "mode": "LSB"
+    },
+    {
+      "frequency": 27395000,
+      "name": "39",
+      "mode": "FM"
+    },
+    {
+      "frequency": 27405000,
+      "name": "40",
+      "mode": "FM"
+    },
+    {
+      "frequency": 28074000,
+      "name": "FT-8",
+      "mode": "USB"
+    },
+    {
+      "frequency": 50313000,
+      "name": "FT-8",
+      "mode": "USB"
+    },
+    {
+      "frequency": 50323000,
+      "name": "FT-8",
+      "mode": "USB"
+    },
+    {
+      "frequency": 29620000,
+      "name": "NY",
+      "mode": "FM"
+    },
+    {
+      "frequency": 29630000,
+      "name": "Como IT",
+      "mode": "FM"
+    },
+    {
+      "frequency": 29640000,
+      "name": "NY Rockland",
+      "mode": "FM"
+    },
+    {
+      "frequency": 29650000,
+      "name": "Swiss",
+      "mode": "FM"
+    },
+    {
+      "frequency": 29670000,
+      "name": "Moscow",
+      "mode": "FM"
+    },
+    {
+      "frequency": 5450000,
+      "name": "Volmet RAF",
+      "mode": "USB"
+    },
+    {
+      "frequency": 5505000,
+      "name": "Volmet Shannon",
+      "mode": "USB"
+    },
+    {
+      "frequency": 5583000,
+      "name": "Volmet Shanwick",
+      "mode": "USB"
+    },
+    {
+      "frequency": 13264000,
+      "name": "Volmet Shannon",
+      "mode": "USB"
+    },
+    {
+      "frequency": 13270000,
+      "name": "Volmet NY",
+      "mode": "USB"
+    },
+    {
+      "frequency": 15034000,
+      "name": "Volmet Trenton",
+      "mode": "USB"
+    },
+	{
+            "frequency": 3573000,
+            "name": "FT8",
+            "mode": "USB"
+        },
+	{
+            "frequency": 145575000,
+            "name": "PI3UTR",
+            "mode": "FM"
+        },
+
+	{
+            "frequency": 145662500,
+            "name": "ON0NL",
+            "mode": "FMC"
+        },
+	{
+            "frequency": 145650000,
+            "name": "ON0LG",
+            "mode": "FM"
+        },
+        {
+            "frequency": 145700000,
+            "name": "PI3EHV",
+            "mode": "FM"
+        },
+	{
+            "frequency": 145712500,
+            "name": "ON0DST",
+            "mode": "FM"
+        },
+	{
+            "frequency": 145725000,
+            "name": "PI3ZLB",
+            "mode": "FM"
+        },
+
+	{
+            "frequency": 145775000,
+            "name": "ON0LB",
+            "mode": "FM"
+        },
+	{
+            "frequency": 145787500,
+            "name": "DB0WA",
+            "mode": "FM"
+        },
+	{
+            "frequency": 438700000,
+            "name": "ON0GBN",
+            "mode": "FM"
+        },
+	{
+            "frequency": 438775000,
+            "name": "ON0WL",
+            "mode": "FM"
+        },
+        {
+            "frequency": 438900000,
+            "name": "ON0LB",
+            "mode": "FMC"
+        },
+        {
+            "frequency": 438987500,
+            "name": "ON0AND",
+            "mode": "FMC"
+        },
+	{
+            "frequency": 439475000,
+            "name": "ON0LG",
+            "mode": "FM"
+        }
+
+
+  ]
+}
