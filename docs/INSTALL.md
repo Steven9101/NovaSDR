@@ -7,6 +7,7 @@ This document describes installing NovaSDR on Linux/macOS using the provided ins
 - Linux or macOS
 - SoapySDR (recommended for hardware input)
 - A supported SDR device driver (via a SoapySDR module)
+- Opus development/runtime library (`libopus` / `opus`)
 
 OpenCL (clFFT) is part of the recommended build. NovaSDR uses OpenCL only when built with the `clfft` feature and when a compatible OpenCL runtime is available.
 When building with `--features clfft`, you also need the `clFFT` library installed (the installer attempts to install it via your package manager; see `NOVA_CLFFT`).
@@ -51,6 +52,7 @@ sudo apt-get update && sudo apt-get install -y --no-install-recommends \
   clang libclang-dev \
   swig python3 python3-dev python3-numpy \
   nodejs npm \
+  libopus-dev \
   ocl-icd-opencl-dev ocl-icd-libopencl1 \
   libclfft-dev \
   libvkfft-dev libvulkan-dev glslang-dev spirv-tools \
@@ -78,7 +80,7 @@ Example (Debian/Ubuntu): `sudo apt-get install -y --no-install-recommends libclf
 Install build/runtime deps (example):
 
 ```sh
-sudo dnf install -y ca-certificates curl tar git gcc gcc-c++ make cmake pkgconf-pkg-config clang llvm-devel libclang-devel swig python3 python3-devel python3-numpy ocl-icd ocl-icd-devel
+sudo dnf install -y ca-certificates curl tar git gcc gcc-c++ make cmake pkgconf-pkg-config clang llvm-devel libclang-devel swig python3 python3-devel python3-numpy opus-devel ocl-icd ocl-icd-devel
 ```
 
 #### Arch (pacman)
@@ -86,7 +88,7 @@ sudo dnf install -y ca-certificates curl tar git gcc gcc-c++ make cmake pkgconf-
 Install build/runtime deps (example):
 
 ```sh
-sudo pacman -Sy --noconfirm --needed ca-certificates curl tar git base-devel cmake pkgconf clang llvm libclang swig python python-numpy ocl-icd opencl-headers
+sudo pacman -Sy --noconfirm --needed ca-certificates curl tar git base-devel cmake pkgconf clang llvm libclang swig python python-numpy opus ocl-icd opencl-headers
 ```
 
 #### openSUSE (zypper)
@@ -95,7 +97,7 @@ Install build/runtime deps (example):
 
 ```sh
 sudo zypper --non-interactive refresh
-sudo zypper --non-interactive install -y ca-certificates curl tar git gcc-c++ make cmake pkg-config clang llvm llvm-devel libclang-devel swig python3 python3-devel python3-numpy OpenCL-Headers ocl-icd-devel
+sudo zypper --non-interactive install -y ca-certificates curl tar git gcc-c++ make cmake pkg-config clang llvm llvm-devel libclang-devel swig python3 python3-devel python3-numpy libopus-devel OpenCL-Headers ocl-icd-devel
 ```
 
 #### macOS (Homebrew)
@@ -103,7 +105,7 @@ sudo zypper --non-interactive install -y ca-certificates curl tar git gcc-c++ ma
 Install build deps (example):
 
 ```sh
-brew install git cmake pkg-config llvm swig python
+brew install git cmake pkg-config llvm swig python opus
 ```
 
 ### Non-interactive mode

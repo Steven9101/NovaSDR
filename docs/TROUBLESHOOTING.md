@@ -32,10 +32,10 @@ Common causes:
 
 | Symptom | Likely cause | Where to look |
 |---|---|---|
-| `/waterfall` works, `/audio` connects but no sound | wrong modulation/window, muted, decoder issue | browser console, [Audio](AUDIO.md), [Protocol](PROTOCOL.md) |
-| WebSocket closes immediately | proxy missing upgrade headers | [Operations](OPERATIONS.md) |
+| `/waterfall` works, `/audio` connects but no sound | wrong modulation/window, muted, decoder issue | browser console, [Audio](AUDIO), [Protocol](PROTOCOL) |
+| WebSocket closes immediately | proxy missing upgrade headers | [Operations](OPERATIONS) |
 | S-meter updates but audio does not | audio commands not applied or rejected | browser console, server logs with `--debug` |
-| High latency / stutter | slow client, CPU bound | [Operations](OPERATIONS.md) |
+| High latency / stutter | slow client, CPU bound | [Operations](OPERATIONS) |
 
 </details>
 

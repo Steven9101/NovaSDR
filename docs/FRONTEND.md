@@ -76,7 +76,7 @@ Attribution for bundled WebAssembly modules and other third-party components is 
 
 Expectations:
 - `/audio` sends framed binary packets (see `docs/PROTOCOL.md`).
-- Default audio codec is IMA ADPCM; the frontend decodes ADPCM to PCM and then runs DSP via `Audio.process_pcm_f32()`.
+- Default audio codec is Opus; the frontend decodes Opus (or ADPCM for compatibility) to PCM and then runs DSP via `Audio.process_pcm_f32()`.
 
 ### iOS background playback
 

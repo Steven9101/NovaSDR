@@ -12,7 +12,7 @@ graph LR
   D --> E[DC removal]
   E --> F[AGC]
   F --> G[Quantize i16]
-  G --> H[IMA ADPCM encode]
+  G --> H[Opus encode default / ADPCM compat]
   H --> I[Binary frame header]
   I --> J[audio websocket frames]
 ```
@@ -68,9 +68,9 @@ When squelch is enabled and closed, the server does not emit audio packets.
 
 ## Output format (frontend contract)
 
-The frontend expects framed binary packets containing IMA ADPCM payloads.
+The frontend expects framed binary packets containing encoded audio payloads.
 
-The backend batches roughly 20ms of PCM per WebSocket frame to reduce packet rate and browser-side scheduling overhead.
+By default, the backend emits Opus chunks (20 ms frames). `adpcm` is still supported for compatibility.
 
 See: `docs/PROTOCOL.md`.
 

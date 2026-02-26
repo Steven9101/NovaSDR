@@ -20,7 +20,7 @@ You can edit/reset these overlays from the setup wizard (`setup` / `configure`),
 
 The Rust backend supports:
 - `receivers[].input.waterfall_compression = "zstd"`
-- `receivers[].input.audio_compression = "adpcm"`
+- `receivers[].input.audio_compression = "opus"` (recommended; `adpcm` also supported)
 - `receivers[].input.accelerator = "none"` (or `clfft` with the `clfft` feature; or `vkfft` with the `vkfft` feature)
 
 ## Online listing registration
@@ -66,7 +66,7 @@ If NovaSDR is running behind a reverse proxy (for example terminating HTTPS on p
         "audio_sps": 12000,
         "waterfall_size": 1024,
         "waterfall_compression": "zstd",
-        "audio_compression": "adpcm",
+        "audio_compression": "opus",
         "accelerator": "none",
         "smeter_offset": 0,
         "driver": { "kind": "stdin", "format": "u8" },
@@ -261,7 +261,7 @@ In practice, for 10-30 MSPS, `fft_size` in the **500k-1M** range is a common swe
 1. Start with a larger FFT at high sample rates (10-30 MSPS: 500k-1M), then adjust based on CPU/GPU load.
 2. Use `accelerator = "clfft"` (GPU) for high sample rates (requires `--features clfft`).
 3. Monitor logs for `waterfall frame skip` to see how much work is being throttled under load.
-4. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for tuning guidance.
+4. See [TROUBLESHOOTING.md](TROUBLESHOOTING) for tuning guidance.
 
 If you are unsure, start with `131072` at `sps` up to 3 MSPS, then tune based on CPU usage and logs.
 

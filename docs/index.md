@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/Steven9101/NovaSDR/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-GPL--3.0--only-blue"></a>
   <img alt="Backend" src="https://img.shields.io/badge/backend-Rust-orange">
-  <img alt="Audio" src="https://img.shields.io/badge/audio-ADPCM-informational">
+  <img alt="Audio" src="https://img.shields.io/badge/audio-Opus-informational">
   <img alt="Waterfall" src="https://img.shields.io/badge/waterfall-Zstd-informational">
   <img alt="Transport" src="https://img.shields.io/badge/transport-WebSocket-informational">
 </p>
@@ -45,17 +45,17 @@ hackrf_transfer -r - -f 100900000 -s 8000000 | ./target/release/novasdr-server -
 
 ## What to read next
 
-- Installation and runtime prerequisites: [Building](BUILDING.md)
-- How configuration maps to runtime behavior: [Configuration](CONFIG.md)
-- All configuration keys: [Configuration Reference](CONFIG_REFERENCE.md)
-- Wire contract between UI and backend: [Protocol](PROTOCOL.md)
-- Chat UI behavior (username, tokens, URL params): [Chat](CHAT.md)
-- How the backend is structured: [Architecture](ARCHITECTURE.md)
-- Signal processing details: [DSP](DSP.md), [Audio](AUDIO.md), [Waterfall](WATERFALL.md)
-- Deployment guidance: [Operations](OPERATIONS.md)
-- Known issues and fixes: [Troubleshooting](TROUBLESHOOTING.md)
-- Licensing and attribution: [Licensing](LICENSING.md), [Third-party](THIRD_PARTY.md)
-- Contributing (fork-first): [Contributing](CONTRIBUTING.md)
+- Installation and runtime prerequisites: [Building](BUILDING)
+- How configuration maps to runtime behavior: [Configuration](CONFIG)
+- All configuration keys: [Configuration Reference](CONFIG_REFERENCE)
+- Wire contract between UI and backend: [Protocol](PROTOCOL)
+- Chat UI behavior (username, tokens, URL params): [Chat](CHAT)
+- How the backend is structured: [Architecture](ARCHITECTURE)
+- Signal processing details: [DSP](DSP), [Audio](AUDIO), [Waterfall](WATERFALL)
+- Deployment guidance: [Operations](OPERATIONS)
+- Known issues and fixes: [Troubleshooting](TROUBLESHOOTING)
+- Licensing and attribution: [Licensing](LICENSING), [Third-party](THIRD_PARTY)
+- Contributing (fork-first): [Contributing](CONTRIBUTING)
 
 ## System overview
 

@@ -19,7 +19,7 @@ On `/audio` and `/waterfall`, the first WebSocket message is a JSON object conta
 - `defaults` (default tuning window + mode)
   - `defaults.squelch_enabled` (optional; if present, clients may enable squelch automatically)
 - `waterfall_compression` (`"zstd"`)
-- `audio_compression` (`"adpcm"`)
+- `audio_compression` (`"opus"` by default; `adpcm` also supported)
 - `overlap`, `fft_overlap` (both `fft_size/2` for the 50 percent overlap model)
 - `markers` (stringified JSON; optional file `config/overlays/markers.json`)
 - `bands` (stringified JSON; optional file `config/overlays/bands.json`)
@@ -61,19 +61,21 @@ The frontend decodes: Zstd stream → CBOR → `Int8Array`.
 
 Binary WebSocket frames are a custom binary envelope (little-endian) followed by codec payload bytes.
 
-Header (36 bytes):
+Header (40 bytes):
 
 ```text
 0..4    magic = "NSDA"
-4       version = u8 (1)
-5       codec = u8 (1=IMA ADPCM)
+4       version = u8 (2)
+5       codec = u8 (1=IMA ADPCM, 2=Opus)
 6..8    reserved = u16 (0)
 8..16   frame_num = u64
 16..20  l = i32 (window start index)
 20..28  m = f64 (tuned center bin)
 28..32  r = i32 (window end index)
 32..36  pwr = f32
-36..    payload bytes
+36..38  frame_count = u16
+38..    repeated: frame_len(u16) + frame_bytes
+last 2  end_mark = u16 (0xaabb)
 ```
 
 Notes:
@@ -81,5 +83,6 @@ Notes:
 - `pwr` is the average power across the same slice that produced the audio.
 
 Payload:
-- codec `1` (IMA ADPCM, mono): a single self-contained block:
-  - `predictor: i16`, `index: u8`, `reserved: u8`, `sample_count: u16`, then 4-bit ADPCM codes packed low-nibble first.
+- codec `1` (IMA ADPCM, mono): one or more ADPCM blocks:
+  - per block: `predictor: i16`, `index: u8`, `reserved: u8`, `sample_count: u16`, then 4-bit ADPCM codes packed low-nibble first.
+- codec `2` (Opus, mono): one or more Opus packets.

@@ -4,6 +4,7 @@
 
 - Rust toolchain (stable)
 - Node.js + npm (frontend build)
+- Opus development/runtime library (`libopus` / `opus`)
 
 > [!TIP]
 > For best performance, use a native toolchain on Linux and build in `--release`.
@@ -226,6 +227,6 @@ rtl_sdr -g 48 -f 100900000 -s 2048000 - | ./target/release/novasdr-server -c con
 
 ### WebSockets do not connect behind a reverse proxy
 
-See [Operations](OPERATIONS.md) for the required proxy headers.
+See [Operations](OPERATIONS) for the required proxy headers.
 
 </details>
