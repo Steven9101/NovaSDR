@@ -8,6 +8,7 @@ use axum::{
 use futures::{SinkExt, StreamExt};
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Duration;
 
 pub async fn upgrade(
     ws: WebSocketUpgrade,
@@ -70,18 +71,42 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
     }
 
     let send_task = tokio::spawn(async move {
-        while let Some(msg) = rx.recv().await {
-            if ws_sender
-                .send(ws::Message::Text(msg.as_ref().to_string()))
-                .await
-                .is_err()
-            {
-                break;
+        let mut ping_interval = tokio::time::interval(Duration::from_secs(30));
+        ping_interval.tick().await; // consume immediate first tick
+        loop {
+            tokio::select! {
+                biased;
+                Some(msg) = rx.recv() => {
+                    if ws_sender
+                        .send(ws::Message::Text(msg.as_ref().to_string()))
+                        .await
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+                _ = ping_interval.tick() => {
+                    if ws_sender.send(ws::Message::Ping(Vec::new())).await.is_err() {
+                        break;
+                    }
+                }
+                else => break,
             }
         }
     });
 
-    while let Some(Ok(msg)) = ws_receiver.next().await {
+    let idle_timeout = Duration::from_secs(90);
+    loop {
+        let maybe_msg = match tokio::time::timeout(idle_timeout, ws_receiver.next()).await {
+            Ok(v) => v,
+            Err(_) => {
+                tracing::info!(client_id, "events ws idle timeout");
+                break;
+            }
+        };
+        let Some(Ok(msg)) = maybe_msg else {
+            break;
+        };
         if matches!(msg, ws::Message::Close(_)) {
             break;
         }

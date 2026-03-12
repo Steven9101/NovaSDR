@@ -9,6 +9,7 @@ use futures::{SinkExt, StreamExt};
 use novasdr_core::{codec::zstd_stream::ZstdStreamEncoder, protocol::WaterfallPacket};
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Duration;
 
 pub async fn upgrade(
     ws: WebSocketUpgrade,
@@ -66,6 +67,8 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
     let state_for_send = state.clone();
     let send_task = tokio::spawn(async move {
         let mut encoder = encoder;
+        let mut ping_interval = tokio::time::interval(Duration::from_secs(30));
+        ping_interval.tick().await; // consume immediate first tick
         loop {
             tokio::select! {
                 biased;
@@ -126,6 +129,11 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
                         break;
                     }
                 }
+                _ = ping_interval.tick() => {
+                    if ws_sender.send(ws::Message::Ping(Vec::new())).await.is_err() {
+                        break;
+                    }
+                }
                 else => break,
             }
         }
@@ -145,7 +153,18 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
 
     receiver.waterfall_clients[initial_level].insert(client_id, client.clone());
 
-    while let Some(Ok(msg)) = ws_receiver.next().await {
+    let idle_timeout = Duration::from_secs(90);
+    loop {
+        let maybe_msg = match tokio::time::timeout(idle_timeout, ws_receiver.next()).await {
+            Ok(v) => v,
+            Err(_) => {
+                tracing::info!(client_id, "waterfall ws idle timeout");
+                break;
+            }
+        };
+        let Some(Ok(msg)) = maybe_msg else {
+            break;
+        };
         match msg {
             ws::Message::Text(txt) => {
                 if txt.len() > 1024 {
