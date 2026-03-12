@@ -2,12 +2,17 @@ name: Docker Publish
 
 on:
   push:
-    tags: [ 'v*.*.*' ] # Dispara quando você cria uma tag de versão (ex: v1.0.0)
-  workflow_dispatch:   # Permite rodar manualmente pela aba "Actions"
+    branches:
+      - main
+    tags:
+      - "v*"
+      - "[0-9]*.[0-9]*.[0-9]*"
+      - "[0-9]*.[0-9]*.[0-9]*-*"
+  workflow_dispatch:
 
 permissions:
   contents: read
-  packages: write # Essencial para publicar no GHCR
+  packages: write
 
 jobs:
   build-and-push:
@@ -19,10 +24,10 @@ jobs:
           submodules: recursive
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3 # Necessário para emular ARM64
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3 # Habilita recursos avançados de build
+        uses: docker/setup-buildx-action@v3
 
       - name: Log into registry ghcr.io
         uses: docker/login-action@v3
@@ -36,14 +41,20 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
+          # Configuração Padrão Ouro para tagueamento múltiplo
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=ref,event=tag
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          platforms: linux/amd64,linux/arm64 # Gera imagem para PC e Raspberry Pi
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha # Usa o cache do GitHub Actions para acelerar builds
+          cache-from: type=gha
           cache-to: type=gha,mode=max
