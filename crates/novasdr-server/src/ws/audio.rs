@@ -24,6 +24,7 @@ use realfft::{ComplexToReal, RealFftPlanner};
 use rustfft::{Fft as RustFft, FftPlanner};
 use serde_json::json;
 use std::sync::Arc;
+use std::time::Duration;
 use std::{mem, net::SocketAddr};
 
 fn with_audio_unique_id(basic_info: String, unique_id: &str) -> String {
@@ -415,6 +416,8 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
 
     let (mut ws_sender, mut ws_receiver) = socket.split();
     let send_task = tokio::spawn(async move {
+        let mut ping_interval = tokio::time::interval(Duration::from_secs(30));
+        ping_interval.tick().await; // consume immediate first tick
         loop {
             tokio::select! {
                 biased;
@@ -430,6 +433,11 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
                 }
                 Some(bytes) = audio_rx.recv() => {
                     if ws_sender.send(ws::Message::Binary(bytes)).await.is_err() {
+                        break;
+                    }
+                }
+                _ = ping_interval.tick() => {
+                    if ws_sender.send(ws::Message::Ping(Vec::new())).await.is_err() {
                         break;
                     }
                 }
@@ -462,7 +470,18 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
         receiver.rt.default_r,
     );
 
-    while let Some(Ok(msg)) = ws_receiver.next().await {
+    let idle_timeout = Duration::from_secs(90);
+    loop {
+        let maybe_msg = match tokio::time::timeout(idle_timeout, ws_receiver.next()).await {
+            Ok(v) => v,
+            Err(_) => {
+                tracing::info!(client_id, %unique_id, "audio ws idle timeout");
+                break;
+            }
+        };
+        let Some(Ok(msg)) = maybe_msg else {
+            break;
+        };
         match msg {
             ws::Message::Text(txt) => {
                 if txt.len() > 1024 {
