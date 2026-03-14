@@ -249,12 +249,16 @@ mod ima_adpcm {
     }
 }
 
+/// Number of consecutive frames below threshold required to close the squelch (both manual and auto modes).
+const SQUELCH_HYSTERESIS_FRAMES: u8 = 10;
+
 #[derive(Debug, Clone)]
 struct SquelchState {
     was_enabled: bool,
     open: bool,
     low_hits: u8,
     close_hits: u8,
+    manual_close_frames: u8,
 }
 
 impl SquelchState {
@@ -264,6 +268,7 @@ impl SquelchState {
             open: true,
             low_hits: 0,
             close_hits: 0,
+            manual_close_frames: 0,
         }
     }
 
@@ -271,15 +276,23 @@ impl SquelchState {
         self.open = false;
         self.low_hits = 0;
         self.close_hits = 0;
+        self.manual_close_frames = 0;
     }
 
     fn reset_open(&mut self) {
         self.open = true;
         self.low_hits = 0;
         self.close_hits = 0;
+        self.manual_close_frames = 0;
     }
 
-    fn update(&mut self, enabled: bool, features: SquelchFeatures) -> bool {
+    fn update(
+        &mut self,
+        enabled: bool,
+        manual_level: Option<f32>,
+        pwr_db: f32,
+        features: SquelchFeatures,
+    ) -> bool {
         if enabled && !self.was_enabled {
             self.reset_closed();
         }
@@ -290,6 +303,20 @@ impl SquelchState {
         if !enabled {
             return true;
         }
+
+        if let Some(threshold) = manual_level {
+            if pwr_db >= threshold {
+                self.open = true;
+                self.manual_close_frames = 0;
+            } else {
+                self.manual_close_frames = self.manual_close_frames.saturating_add(1);
+                if self.manual_close_frames >= SQUELCH_HYSTERESIS_FRAMES {
+                    self.open = false;
+                }
+            }
+            return self.open;
+        }
+
 
         let min_active_bins = if features.len <= 256 {
             1u16
@@ -337,7 +364,7 @@ impl SquelchState {
         } else {
             self.close_hits = 0;
         }
-        if self.close_hits >= 10 {
+        if self.close_hits >= SQUELCH_HYSTERESIS_FRAMES {
             self.reset_closed();
         }
         self.open
@@ -401,6 +428,7 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
         r: receiver.rt.default_r,
         mute: false,
         squelch_enabled: receiver.receiver.input.defaults.squelch_enabled,
+        squelch_level: None,
         demodulation: DemodulationMode::from_str_upper(receiver.rt.default_mode_str.as_str())
             .unwrap_or(DemodulationMode::Usb),
         agc_speed: AgcSpeed::Default,
@@ -512,6 +540,7 @@ async fn handle(socket: ws::WebSocket, state: Arc<AppState>, _ip_guard: crate::s
                                 p.mute = false;
                                 p.squelch_enabled =
                                     receiver.receiver.input.defaults.squelch_enabled;
+                                p.squelch_level = None;
                                 p.demodulation = DemodulationMode::from_str_upper(
                                     receiver.rt.default_mode_str.as_str(),
                                 )
@@ -717,7 +746,7 @@ fn apply_command(
             };
             p.mute = mute;
         }
-        novasdr_core::protocol::ClientCommand::Squelch { enabled } => {
+        novasdr_core::protocol::ClientCommand::Squelch { enabled, level } => {
             let mut p = match client.params.lock() {
                 Ok(g) => g,
                 Err(poisoned) => {
@@ -729,6 +758,7 @@ fn apply_command(
                 }
             };
             p.squelch_enabled = enabled;
+            p.squelch_level = level;
         }
         novasdr_core::protocol::ClientCommand::Agc {
             speed,
@@ -788,7 +818,7 @@ mod tests {
     fn squelch_disabled_is_always_open() {
         let mut s = SquelchState::new();
         for v in [0.0, 1.0, 10.0, 100.0] {
-            assert!(s.update(false, features_for_test(v)));
+            assert!(s.update(false, None, 0.0, features_for_test(v)));
         }
     }
 
@@ -796,17 +826,17 @@ mod tests {
     fn squelch_closes_after_sustained_low_variation() {
         let mut s = SquelchState::new();
         assert!(
-            s.update(true, features_for_test(20.0)),
+            s.update(true, None, 0.0, features_for_test(20.0)),
             "strong variation should open squelch"
         );
         for _ in 0..9 {
             assert!(
-                s.update(true, features_for_test(0.0)),
+                s.update(true, None, 0.0, features_for_test(0.0)),
                 "should remain open until close hysteresis triggers"
             );
         }
         assert!(
-            !s.update(true, features_for_test(0.0)),
+            !s.update(true, None, 0.0, features_for_test(0.0)),
             "should close after sustained low variance"
         );
     }
@@ -814,8 +844,54 @@ mod tests {
     #[test]
     fn squelch_opens_immediately_on_strong_variation() {
         let mut s = SquelchState::new();
-        assert!(!s.update(true, features_for_test(0.0)));
-        assert!(s.update(true, features_for_test(100.0)));
+        assert!(!s.update(true, None, 0.0, features_for_test(0.0)));
+        assert!(s.update(true, None, 0.0, features_for_test(100.0)));
+    }
+
+    #[test]
+    fn squelch_manual_opens_when_power_above_threshold() {
+        let mut s = SquelchState::new();
+        // Manual mode: threshold = -50 dB, power = -30 dB (above threshold) → open
+        assert!(s.update(true, Some(-50.0), -30.0, features_for_test(0.0)));
+        // Power drops to -60 dB (below threshold) but hysteresis holds open
+        for _ in 0..9 {
+            assert!(
+                s.update(true, Some(-50.0), -60.0, features_for_test(0.0)),
+                "should remain open during manual close hysteresis"
+            );
+        }
+        // 10th frame below → closes
+        assert!(
+            !s.update(true, Some(-50.0), -60.0, features_for_test(0.0)),
+            "should close after 10 frames below manual threshold"
+        );
+    }
+
+    #[test]
+    fn squelch_manual_resets_hysteresis_on_signal_return() {
+        let mut s = SquelchState::new();
+        assert!(s.update(true, Some(-50.0), -30.0, features_for_test(0.0)));
+        // 5 frames below threshold
+        for _ in 0..5 {
+            assert!(s.update(true, Some(-50.0), -60.0, features_for_test(0.0)));
+        }
+        // Signal returns → counter resets
+        assert!(s.update(true, Some(-50.0), -40.0, features_for_test(0.0)));
+        // Need fresh 10 frames to close again
+        for _ in 0..9 {
+            assert!(s.update(true, Some(-50.0), -60.0, features_for_test(0.0)));
+        }
+        assert!(!s.update(true, Some(-50.0), -60.0, features_for_test(0.0)));
+    }
+
+    #[test]
+    fn squelch_auto_ignores_pwr_db() {
+        let mut s = SquelchState::new();
+        // Even with very low pwr_db, auto mode uses features (the statistical algorithm)
+        assert!(
+            s.update(true, None, -200.0, features_for_test(100.0)),
+            "auto mode should open based on features, not pwr_db"
+        );
     }
 }
 
@@ -978,7 +1054,20 @@ impl AudioPipeline {
         }
 
         let features = squelch_features(spectrum_slice);
-        let squelch_open = self.squelch.update(params.squelch_enabled, features);
+
+        // Compute power in dB for manual squelch & S-Meter (mirrors frontend S-Meter math).
+        let pwr_raw = spectrum_slice.iter().map(|c| c.norm_sqr()).sum::<f32>();
+        let n = spectrum_slice.len().max(1) as f32;
+        let avg_per_bin = pwr_raw / n;
+        let normalized = avg_per_bin / n;
+        let pwr_db = 10.0 * normalized.max(1e-20).log10();
+
+        let squelch_open = self.squelch.update(
+            params.squelch_enabled,
+            params.squelch_level,
+            pwr_db,
+            features,
+        );
         if params.squelch_enabled && !squelch_open {
             self.reset_for_squelch_gate();
             return Ok(out_packets);
@@ -1320,27 +1409,27 @@ mod pipeline_tests {
 
         // Enabling squelch closes it until a signal is detected.
         assert!(
-            !s.update(true, features(0.0)),
+            !s.update(true, None, 0.0, features(0.0)),
             "expected closed immediately after enable"
         );
 
         // Soft open: scaled >= 5 for 3 consecutive frames.
-        assert!(!s.update(true, features(6.0)));
-        assert!(!s.update(true, features(6.0)));
+        assert!(!s.update(true, None, 0.0, features(6.0)));
+        assert!(!s.update(true, None, 0.0, features(6.0)));
         assert!(
-            s.update(true, features(6.0)),
+            s.update(true, None, 0.0, features(6.0)),
             "expected open after 3 consecutive soft hits"
         );
 
         // Close hysteresis: scaled < 2 for 10 consecutive frames.
         for _ in 0..9 {
             assert!(
-                s.update(true, features(1.0)),
+                s.update(true, None, 0.0, features(1.0)),
                 "expected to remain open during close hysteresis"
             );
         }
         assert!(
-            !s.update(true, features(1.0)),
+            !s.update(true, None, 0.0, features(1.0)),
             "expected to close after hysteresis completes"
         );
     }
