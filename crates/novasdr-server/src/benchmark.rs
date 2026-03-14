@@ -43,6 +43,7 @@ fn ssb_benchmark(iterations: usize) -> anyhow::Result<()> {
         r: 2000,
         mute: false,
         squelch_enabled: false,
+        squelch_level: None,
         demodulation: DemodulationMode::Usb,
         agc_speed: AgcSpeed::Off,
         agc_attack_ms: None,
