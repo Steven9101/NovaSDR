@@ -1,0 +1,597 @@
+{
+  "bands": [
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 137800,
+      "endHz": 137800,
+      "modes": [
+        {
+          "endFreq": 137800,
+          "endHz": 137800,
+          "mode": "CW",
+          "startFreq": 135700,
+          "startHz": 135700
+        }
+      ],
+      "name": "2200M HAM",
+      "startFreq": 135700,
+      "startHz": 135700
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 479000,
+      "endHz": 479000,
+      "modes": [
+        {
+          "endFreq": 475000,
+          "endHz": 475000,
+          "mode": "CW",
+          "startFreq": 472000,
+          "startHz": 472000
+        },
+        {
+          "endFreq": 479000,
+          "endHz": 479000,
+          "mode": "LSB",
+          "startFreq": 475000,
+          "startHz": 475000
+        }
+      ],
+      "name": "630M HAM",
+      "startFreq": 472000,
+      "startHz": 472000
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 504000,
+      "endHz": 504000,
+      "modes": [
+        {
+          "endFreq": 504000,
+          "endHz": 504000,
+          "mode": "CW",
+          "startFreq": 501000,
+          "startHz": 501000
+        }
+      ],
+      "name": "600M HAM",
+      "startFreq": 501000,
+      "startHz": 501000
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 2000000,
+      "endHz": 2000000,
+      "modes": [
+        {
+          "endFreq": 1840000,
+          "endHz": 1840000,
+          "mode": "CW",
+          "startFreq": 1810000,
+          "startHz": 1810000
+        },
+        {
+          "endFreq": 2000000,
+          "endHz": 2000000,
+          "mode": "LSB",
+          "startFreq": 1840000,
+          "startHz": 1840000
+        }
+      ],
+      "name": "160M HAM",
+      "startFreq": 1810000,
+      "startHz": 1810000
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 3900000,
+      "endHz": 3900000,
+      "modes": [
+        {
+          "endFreq": 3600000,
+          "endHz": 3600000,
+          "mode": "CW",
+          "startFreq": 3500000,
+          "startHz": 3500000
+        },
+        {
+          "endFreq": 3900000,
+          "endHz": 3900000,
+          "mode": "LSB",
+          "startFreq": 3600000,
+          "startHz": 3600000
+        }
+      ],
+        "name": "80M HAM",
+	"mode": "LSB".
+        "startFreq": 3500000,
+	"startHz": 3500000
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 5366500,
+      "endHz": 5366500,
+      "modes": [
+        {
+          "endFreq": 5366500,
+          "endHz": 5366500,
+          "mode": "USB",
+          "startFreq": 5351500,
+          "startHz": 5351500
+        }
+      ],
+      "name": "60M HAM",
+	"mode": "USB",
+      "startFreq": 5351500,
+      "startHz": 5351500
+    },
+    {
+      "color": "rgba(199, 12, 193, 0.6)",
+      "endFreq": 6200000,
+      "endHz": 6200000,
+      "modes": [
+        {
+          "endFreq": 6200000,
+          "endHz": 6200000,
+          "mode": "AM",
+          "startFreq": 5900000,
+          "startHz": 5900000
+        }
+      ],
+      "name": "49M AM",
+      "startFreq": 5900000,
+      "startHz": 5900000
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 7200000,
+      "endHz": 7200000,
+      "modes": [
+        {
+          "endFreq": 7050000,
+          "endHz": 7050000,
+          "mode": "CW",
+          "startFreq": 7000000,
+          "startHz": 7000000
+        },
+        {
+          "endFreq": 7200000,
+          "endHz": 7200000,
+          "mode": "LSB",
+          "startFreq": 7050000,
+          "startHz": 7050000
+        }
+      ],
+      "name": "40M HAM",
+      "startFreq": 7000000,
+      "startHz": 7000000
+    },
+    {
+      "color": "rgba(199, 12, 193, 0.6)",
+      "endFreq": 7450000,
+      "endHz": 7450000,
+      "modes": [
+        {
+          "endFreq": 7450000,
+          "endHz": 7450000,
+          "mode": "AM",
+          "startFreq": 7200000,
+          "startHz": 7200000
+        }
+      ],
+      "name": "41M AM",
+      "startFreq": 7200000,
+      "startHz": 7200000
+    },
+    {
+      "color": "rgba(199, 12, 193, 0.6)",
+      "endFreq": 9900000,
+      "endHz": 9900000,
+      "modes": [
+        {
+          "endFreq": 9900000,
+          "endHz": 9900000,
+          "mode": "AM",
+          "startFreq": 9400000,
+          "startHz": 9400000
+        }
+      ],
+      "name": "31M AM",
+      "startFreq": 9400000,
+      "startHz": 9400000
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 10150000,
+      "endHz": 10150000,
+      "modes": [
+        {
+          "endFreq": 10150000,
+          "endHz": 10150000,
+          "mode": "CW",
+          "startFreq": 10100000,
+          "startHz": 10100000
+        }
+      ],
+      "name": "30M HAM",
+      "startFreq": 10100000,
+      "startHz": 10100000
+    },
+    {
+      "color": "rgba(199, 12, 193, 0.6)",
+      "endFreq": 12100000,
+      "endHz": 12100000,
+      "modes": [
+        {
+          "endFreq": 12100000,
+          "endHz": 12100000,
+          "mode": "AM",
+          "startFreq": 11600000,
+          "startHz": 11600000
+        }
+      ],
+      "name": "25M AM",
+      "startFreq": 11600000,
+      "startHz": 11600000
+    },
+    {
+      "color": "rgba(199, 12, 193, 0.6)",
+      "endFreq": 13870000,
+      "endHz": 13870000,
+      "modes": [
+        {
+          "endFreq": 13870000,
+          "endHz": 13870000,
+          "mode": "AM",
+          "startFreq": 13570000,
+          "startHz": 13570000
+        }
+      ],
+      "name": "22M AM",
+      "startFreq": 13570000,
+      "startHz": 13570000
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 14350000,
+      "endHz": 14350000,
+      "modes": [
+        {
+          "endFreq": 14070000,
+          "endHz": 14070000,
+          "mode": "CW",
+          "startFreq": 14000000,
+          "startHz": 14000000
+        },
+        {
+          "endFreq": 14350000,
+          "endHz": 14350000,
+          "mode": "USB",
+          "startFreq": 14070000,
+          "startHz": 14070000
+        }
+      ],
+      "name": "20M HAM",
+      "startFreq": 14000000,
+      "startHz": 14000000
+    },
+    {
+      "color": "rgba(199, 12, 193, 0.6)",
+      "endFreq": 15800000,
+      "endHz": 15800000,
+      "modes": [
+        {
+          "endFreq": 15800000,
+          "endHz": 15800000,
+          "mode": "AM",
+          "startFreq": 15100000,
+          "startHz": 15100000
+        }
+      ],
+      "name": "19M AM",
+      "startFreq": 15100000,
+      "startHz": 15100000
+    },
+    {
+      "color": "rgba(199, 12, 193, 0.6)",
+      "endFreq": 17900000,
+      "endHz": 17900000,
+      "modes": [
+        {
+          "endFreq": 17900000,
+          "endHz": 17900000,
+          "mode": "AM",
+          "startFreq": 17480000,
+          "startHz": 17480000
+        }
+      ],
+      "name": "16M AM",
+      "startFreq": 17480000,
+      "startHz": 17480000
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 18168000,
+      "endHz": 18168000,
+      "modes": [
+        {
+          "endFreq": 18100000,
+          "endHz": 18100000,
+          "mode": "CW",
+          "startFreq": 18068000,
+          "startHz": 18068000
+        },
+        {
+          "endFreq": 18168000,
+          "endHz": 18168000,
+          "mode": "USB",
+          "startFreq": 18100000,
+          "startHz": 18100000
+        }
+      ],
+      "name": "17M HAM",
+      "startFreq": 18068000,
+      "startHz": 18068000
+    },
+    {
+      "color": "rgba(199, 12, 193, 0.6)",
+      "endFreq": 19020000,
+      "endHz": 19020000,
+      "modes": [
+        {
+          "endFreq": 19020000,
+          "endHz": 19020000,
+          "mode": "AM",
+          "startFreq": 18900000,
+          "startHz": 18900000
+        }
+      ],
+      "name": "15M AM",
+      "startFreq": 18900000,
+      "startHz": 18900000
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 21450000,
+      "endHz": 21450000,
+      "modes": [
+        {
+          "endFreq": 21070000,
+          "endHz": 21070000,
+          "mode": "CW",
+          "startFreq": 21000000,
+          "startHz": 21000000
+        },
+        {
+          "endFreq": 21450000,
+          "endHz": 21450000,
+          "mode": "USB",
+          "startFreq": 21070000,
+          "startHz": 21070000
+        }
+      ],
+      "name": "15M HAM",
+      "startFreq": 21000000,
+      "startHz": 21000000
+    },
+    {
+      "color": "rgba(199, 12, 193, 0.6)",
+      "endFreq": 21850000,
+      "endHz": 21850000,
+      "modes": [
+        {
+          "endFreq": 21850000,
+          "endHz": 21850000,
+          "mode": "AM",
+          "startFreq": 21450000,
+          "startHz": 21450000
+        }
+      ],
+      "name": "13M AM",
+      "startFreq": 21450000,
+      "startHz": 21450000
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 24990000,
+      "endHz": 24990000,
+      "modes": [
+        {
+          "endFreq": 24920000,
+          "endHz": 24920000,
+          "mode": "CW",
+          "startFreq": 24890000,
+          "startHz": 24890000
+        },
+        {
+          "endFreq": 24990000,
+          "endHz": 24990000,
+          "mode": "USB",
+          "startFreq": 24920000,
+          "startHz": 24920000
+        }
+      ],
+      "name": "12M HAM",
+      "startFreq": 24890000,
+      "startHz": 24890000
+    },
+    {
+      "color": "rgba(199, 12, 193, 0.6)",
+      "endFreq": 26100000,
+      "endHz": 26100000,
+      "modes": [
+        {
+          "endFreq": 26100000,
+          "endHz": 26100000,
+          "mode": "AM",
+          "startFreq": 25670000,
+          "startHz": 25670000
+        }
+      ],
+      "name": "11M AM",
+      "startFreq": 25670000,
+      "startHz": 25670000
+    },
+    {
+      "color": "rgba(3, 227, 252, 0.6)",
+      "endFreq": 27405000,
+      "endHz": 27405000,
+      "modes": [
+        {
+          "endFreq": 27405000,
+          "endHz": 27405000,
+          "mode": "AM",
+          "startFreq": 26965000,
+          "startHz": 26965000
+        }
+      ],
+      "name": "CB",
+      "startFreq": 26965000,
+      "startHz": 26965000
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 29700000,
+      "endHz": 29700000,
+      "modes": [
+        {
+          "endFreq": 28070000,
+          "endHz": 28070000,
+          "mode": "CW",
+          "startFreq": 28000000,
+          "startHz": 28000000
+        },
+        {
+          "endFreq": 29700000,
+          "endHz": 29700000,
+          "mode": "USB",
+          "startFreq": 28070000,
+          "startHz": 28070000
+        }
+      ],
+      "name": "10M HAM",
+      "startFreq": 28000000,
+      "startHz": 28000000
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 54000000,
+      "endHz": 54000000,
+      "modes": [
+        {
+          "endFreq": 50100000,
+          "endHz": 50100000,
+          "mode": "CW",
+          "startFreq": 50000000,
+          "startHz": 50000000
+        },
+        {
+          "endFreq": 54000000,
+          "endHz": 54000000,
+          "mode": "USB",
+          "startFreq": 50100000,
+          "startHz": 50100000
+        }
+      ],
+      "name": "6M HAM",
+      "startFreq": 50000000,
+      "startHz": 50000000
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 69950000,
+      "endHz": 69950000,
+      "modes": [
+        {
+          "endFreq": 69950000,
+          "endHz": 69950000,
+          "mode": "FM",
+          "startFreq": 69950000,
+          "startHz": 69950000
+        }
+      ],
+      "name": "4M HAM (69.95 MHz)",
+      "startFreq": 69950000,
+      "startHz": 69950000
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 70412500,
+      "endHz": 70412500,
+      "modes": [
+        {
+          "endFreq": 70412500,
+          "endHz": 70412500,
+          "mode": "FM",
+          "startFreq": 70112500,
+          "startHz": 70112500
+        }
+      ],
+      "name": "4M HAM (70.1125–70.4125 MHz)",
+      "startFreq": 70112500,
+      "startHz": 70112500
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 148000000,
+      "endHz": 148000000,
+      "modes": [
+        {
+          "endFreq": 144100000,
+          "endHz": 144100000,
+          "mode": "CW",
+          "startFreq": 144000000,
+          "startHz": 144000000
+        },
+        {
+          "endFreq": 144300000,
+          "endHz": 144300000,
+          "mode": "USB",
+          "startFreq": 144100000,
+          "startHz": 144100000
+        },
+        {
+          "endFreq": 148000000,
+          "endHz": 148000000,
+          "mode": "FM",
+          "startFreq": 144300000,
+          "startHz": 144300000
+        }
+      ],
+      "name": "2M HAM",
+      "startFreq": 144000000,
+      "startHz": 144000000
+    },
+    {
+      "color": "rgba(50, 168, 72, 0.6)",
+      "endFreq": 440000000,
+      "endHz": 440000000,
+      "modes": [
+        {
+          "endFreq": 430100000,
+          "endHz": 430100000,
+          "mode": "CW",
+          "startFreq": 430000000,
+          "startHz": 430000000
+        },
+        {
+          "endFreq": 432100000,
+          "endHz": 432100000,
+          "mode": "USB",
+          "startFreq": 430100000,
+          "startHz": 430100000
+        },
+        {
+          "endFreq": 440000000,
+          "endHz": 440000000,
+          "mode": "FM",
+          "startFreq": 432100000,
+          "startHz": 432100000
+        }
+      ],
+      "name": "70CM HAM",
+      "startFreq": 430000000,
+      "startHz": 430000000
+    }
+  ]
+}

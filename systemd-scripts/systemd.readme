@@ -1,0 +1,18 @@
+Place the start and stop .sh your novasdr directory and adjust the paramaters to your needs.
+
+Place the websdr.service in /usr/lib/systemd/system/
+
+Edit it to your needs, as my parameters are probably not yours.
+
+Then run: systemctl enable websdr.service
+
+To start: systemctl start websdr
+
+To stop: systemctl stop websdr
+
+The scripts use killall, missing in Debian: apt install psmisc 
+
+So it's installed.
+
+Bas ON5HB.
+

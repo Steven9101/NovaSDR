@@ -1,0 +1,14 @@
+[Unit]
+Description=NovaSDR WebSDR
+After=network-online.target
+
+[Service]
+Type=exec
+ExecStart=/opt/novasdr/start-websdr.sh
+ExecStop=/opt/novasdr/stop-websdr.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
