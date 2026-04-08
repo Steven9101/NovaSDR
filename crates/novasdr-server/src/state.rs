@@ -403,6 +403,7 @@ pub struct AudioParams {
     pub r: i32,
     pub mute: bool,
     pub squelch_enabled: bool,
+    pub squelch_level: Option<f32>,
     pub demodulation: novasdr_core::dsp::demod::DemodulationMode,
     pub agc_speed: AgcSpeed,
     pub agc_attack_ms: Option<f32>,

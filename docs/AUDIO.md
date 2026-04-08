@@ -40,29 +40,44 @@ Supported mode strings:
 
 `FMC` is an alias of `FM` on the backend (the extra CTCSS reduction is a frontend audio filter).
 
-## Squelch (auto, frequency-domain)
+## Squelch (hybrid: auto / manual)
 
-The WebSDR squelch is implemented server-side and operates on the current audio window in the frequency domain.
-It does not use a user-set signal-level threshold.
+The squelch operates server-side and supports two modes selected by the `level` field:
 
-Frontend command:
+### Frontend command
 
 ```json
-{ "cmd": "squelch", "enabled": true }
+{ "cmd": "squelch", "enabled": true, "level": null }
+{ "cmd": "squelch", "enabled": true, "level": -50.0 }
 ```
 
-Algorithm (per audio frame):
-- Compute per-bin power over the audio FFT slice:
-  - `p_i = |X_i|^2`
-- Compute relative variance:
-  - `rv = var(p) / mean(p)^2`
-- Compute a bandwidth-independent score (where `N` is the number of bins):
-  - `scaled = (rv - 1) * sqrt(N)`
+| Field     | Type             | Description                                                                                  |
+|-----------|------------------|----------------------------------------------------------------------------------------------|
+| `enabled` | `bool`           | Enables or disables squelch entirely.                                                        |
+| `level`   | `Option<f32>`    | `null` → auto (statistical algorithm). `Some(threshold_db)` → manual (power threshold in dB).|
+
+### Auto mode (`level: null`)
+
+Uses a frequency-domain statistical algorithm (per audio frame):
+
+- Compute per-bin power: `p_i = |X_i|^2`
+- Compute relative variance: `rv = var(p) / mean(p)^2`
+- Compute bandwidth-independent score: `scaled = (rv - 1) * sqrt(N)`
 
 Decision logic (fixed constants):
+
 - Open immediately if `scaled >= 18`.
 - Open if `scaled >= 5` for 3 consecutive frames.
-- When open, close only after `scaled < 2` for 10 consecutive frames (hysteresis).
+- Close after `scaled < 2` for `SQUELCH_HYSTERESIS_FRAMES` (10) consecutive frames.
+
+### Manual mode (`level: Some(threshold_db)`)
+
+Compares the frame's signal power (dB) against the user-defined threshold:
+
+- **Open** when `pwr_db >= threshold`.
+- **Close** after `SQUELCH_HYSTERESIS_FRAMES` (10) consecutive frames below threshold.
+
+### Behavior
 
 When squelch is enabled and closed, the server does not emit audio packets.
 

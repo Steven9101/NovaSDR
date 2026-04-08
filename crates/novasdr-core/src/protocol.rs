@@ -59,6 +59,8 @@ pub enum ClientCommand {
     },
     Squelch {
         enabled: bool,
+        #[serde(default)]
+        level: Option<f32>,
     },
     Chat {
         message: String,
